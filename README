@@ -1,0 +1,30 @@
+# Homework 1 - NDC to RGB Shader
+John Salame
+CSCI 5239 Spring 2023
+
+Based on ex01 silly shader by
+Willem A. (Vlakkies) Schreuder
+CSCI4239/5239 Spring 2023
+
+### Description
+Demonstrates use of vertex and fragment shaders.
+The color of each fragment depends on the position on the screen in Normalized Device Coordinates.
+Red intensity increases rightward.
+Green intensity increases upward.
+Blue intensity increases if the object is close to the camera.
+
+The bottom left corner should be dark, with some blue.
+The top left corner should be cyan.
+The top right corner should be yellow or white.
+The bottom right corner should be purple / magenta.
+
+
+### Key bindings
+  0-4        Change location of object to center or corners of screen
+  m          Toggle shader
+  o          Change objects
+  arrows     Change view angle
+  PgDn/PgUp  Zoom in and out
+  ] and [    Zoom in and out
+  0          Reset view angle
+  ESC        Exit
