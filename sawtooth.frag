@@ -3,12 +3,11 @@
 // After a few attempts, I ended up making a sawtooth pattern by accident.
 #version 120
 
-uniform int dim;
+uniform float dim;
 
 void main() {
-	vec2 p = gl_FragCoord.xy;
-	// vec2 center = mod(p, dim) * dim;
-	// vec2 r = p - center;
+	// vec2 p = gl_FragCoord.xy;
+	vec2 p = gl_TexCoord[0].xy;
 	vec2 r = mod(p, 2*dim);
 	r.x = r.x>dim? r.x-2*dim : r.x; // allow for negative offsets from the center
 	r.y = r.y>dim? r.y-2*dim : r.y; // allow for negative offsets from the center

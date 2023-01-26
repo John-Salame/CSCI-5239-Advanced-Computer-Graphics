@@ -44,7 +44,7 @@ void display(GLFWwindow* window)
      //int id = glGetUniformLocation(shader,"time");
      //glUniform1f(id,glfwGetTime());
      int id = glGetUniformLocation(shader, "dim");
-     glUniform1i(id, 50); // squares of side length 50
+     glUniform1f(id,0.5); // squares of side length 50
    }
    else
      glUseProgram(0);
@@ -52,7 +52,7 @@ void display(GLFWwindow* window)
    if (obj)
      TexturedIcosahedron(tex);
    else
-     SolidSphere(24);
+     TexturedSphere(24, tex);
      //TexturedCube(tex);
    //  Revert to fixed pipeline
    glUseProgram(0);
