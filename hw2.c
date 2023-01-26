@@ -41,8 +41,10 @@ void display(GLFWwindow* window)
    if (mode)
    {
      glUseProgram(shader);
-     int id = glGetUniformLocation(shader,"time");
-     glUniform1f(id,glfwGetTime());
+     //int id = glGetUniformLocation(shader,"time");
+     //glUniform1f(id,glfwGetTime());
+     int id = glGetUniformLocation(shader, "dim");
+     glUniform1i(id, 50); // squares of side length 50
    }
    else
      glUseProgram(0);
@@ -50,7 +52,8 @@ void display(GLFWwindow* window)
    if (obj)
      TexturedIcosahedron(tex);
    else
-     TexturedCube(tex);
+     SolidSphere(24);
+     //TexturedCube(tex);
    //  Revert to fixed pipeline
    glUseProgram(0);
 
@@ -155,7 +158,7 @@ int main(int argc,char* argv[])
    GLFWwindow* window = InitWindow("John Salame HW 1",1,600,600,&reshape,&key);
 
    //  Load shader
-   shader = CreateShaderProg("ndc.vert",NULL);
+   shader = CreateShaderProg(NULL,"sawtooth.frag");
    //  Load textures
    tex = LoadTexBMP("pi.bmp");
 
