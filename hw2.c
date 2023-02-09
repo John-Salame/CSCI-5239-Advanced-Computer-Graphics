@@ -12,17 +12,18 @@
  *  ESC        Exit
  */
 #include "CSCIx239.h"
-int mode=1;    //  Shader
+int mode=3;    //  Shader
 int th=0,ph=0; //  View angles
 int fov=57;    //  Field of view (for perspective)
 int tex=0;     //  Texture
-int obj=0;     //  Object
-int shader=0;  //  Shader
+int obj=1;     //  Object
+#define NUM_SHADERS 4
+int shader[NUM_SHADERS];  //  Shader
 float asp=1;   //  Aspect ratio
 float dim=3;   //  Size of world
 float objX = 0;
 float objY = 0;
-const char* text[] = {"Fixed Pipeline","NDC Shader"};
+const char* text[NUM_SHADERS] = {"Fixed Pipeline","Sawtooth","Polka Dots","Thorns"};
 
 //
 //  Refresh display
@@ -33,27 +34,45 @@ void display(GLFWwindow* window)
    glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
    //  Enable Z-buffering in OpenGL
    glEnable(GL_DEPTH_TEST);
+   //  Set material and lighting interaction
+   glLightModeli(GL_LIGHT_MODEL_LOCAL_VIEWER, 0);
+   glColorMaterial(GL_FRONT, GL_AMBIENT_AND_DIFFUSE);
+   glEnable(GL_COLOR_MATERIAL); // without this enabled, glColor4fv does not apply, but the materials do
+   glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE); // mix colors
    //  Set view
    View(th,ph,fov,dim);
-   glTranslatef(objX, objY, 0.0);
 
-   //  Enable shader
+   //code related to lighting
+   // Don't light the light source; use program 0 (fixed pipeline) so lighting enable/disable has meaning.
+   glUseProgram(0);
+   float ambient = 0.2;
+   float diffuse = 0.5;
+   float specular = 0.3;
+   float lTh = 0.0;
+   float l0Position[] = { dim * Cos(lTh), 0.0, -dim * Sin(lTh), 1.0 };
+   glShadeModel(GL_SMOOTH);
+   // draw the light
+   Lighting(l0Position[0], l0Position[1], l0Position[2], ambient, diffuse, specular);
+
+   // Move the object if necessary (related to hotkeys that bring object to corners of screen)
+   glTranslatef(objX, objY, 0.0);
+   // Enable shader and draw object
    if (mode)
    {
-     glUseProgram(shader);
-     int id = glGetUniformLocation(shader,"time");
-     glUniform1f(id,glfwGetTime());
+     glUseProgram(shader[mode]);
+     //int id = glGetUniformLocation(shader,"time");
+     //glUniform1f(id,glfwGetTime());
+     int id = glGetUniformLocation(shader[mode], "dim");
+     glUniform1f(id,0.5); // squares of side length 50
    }
-   else
-     glUseProgram(0);
-   //  Draw scene
    if (obj)
      TexturedIcosahedron(tex);
    else
+     //TexturedSphere(24, tex);
      TexturedCube(tex);
+
    //  Revert to fixed pipeline
    glUseProgram(0);
-
    //  Display axes
    Axes(2);
    //  Display parameters
@@ -100,7 +119,7 @@ void key(GLFWwindow* window,int key,int scancode,int action,int mods)
    }
    //  Switch shaders
    else if (key==GLFW_KEY_M)
-      mode = 1-mode;
+      mode = (mode + 1) % NUM_SHADERS;
    //  Switch objects
    else if (key==GLFW_KEY_O)
       obj = 1-obj;
@@ -152,10 +171,13 @@ void reshape(GLFWwindow* window,int width,int height)
 int main(int argc,char* argv[])
 {
    //  Initialize GLFW
-   GLFWwindow* window = InitWindow("John Salame HW 1",1,600,600,&reshape,&key);
+   GLFWwindow* window = InitWindow("John Salame HW 2 - Procedural Textures",1,600,600,&reshape,&key);
 
    //  Load shader
-   shader = CreateShaderProg("ndc.vert",NULL);
+   shader[0] = 0; // Fixed pipeline
+   shader[1] = CreateShaderProg("lighting.vert","sawtooth.frag");
+   shader[2] = CreateShaderProg("lighting.vert", "polka.frag");
+   shader[3] = CreateShaderProg("lighting.vert", "thorns.frag");
    //  Load textures
    tex = LoadTexBMP("pi.bmp");
 
