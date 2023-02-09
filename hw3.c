@@ -11,8 +11,10 @@
  *  0          Reset view angle
  *  ESC        Exit
  */
+#include <stdlib.h>
 #include "CSCIx239.h"
-int mode=3;    //  Shader
+#include "grass.h"
+int mode=0;    //  Shader
 int th=0,ph=0; //  View angles
 int fov=57;    //  Field of view (for perspective)
 int tex=0;     //  Texture
@@ -24,52 +26,81 @@ float dim=3;   //  Size of world
 float objX = 0;
 float objY = 0;
 const char* text[NUM_SHADERS] = {"Fixed Pipeline","Sawtooth","Polka Dots","Thorns"};
+int numPatches = 2;
+int oldNumPatches = 0;
+double* grassHeights = 0; // will be a 2d array of grass heights
 
 //
 //  Refresh display
 //
 void display(GLFWwindow* window)
 {
-   //  Erase the window and the depth buffer
-   glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-   //  Enable Z-buffering in OpenGL
-   glEnable(GL_DEPTH_TEST);
-   //  Set material and lighting interaction
-   glLightModeli(GL_LIGHT_MODEL_LOCAL_VIEWER, 0);
-   glColorMaterial(GL_FRONT, GL_AMBIENT_AND_DIFFUSE);
-   glEnable(GL_COLOR_MATERIAL); // without this enabled, glColor4fv does not apply, but the materials do
-   glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE); // mix colors
-   //  Set view
-   View(th,ph,fov,dim);
+    //  Erase the window and the depth buffer
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    //  Enable Z-buffering in OpenGL
+    glEnable(GL_DEPTH_TEST);
+    //  Set material and lighting interaction
+    glLightModeli(GL_LIGHT_MODEL_LOCAL_VIEWER, 0);
+    glColorMaterial(GL_FRONT, GL_AMBIENT_AND_DIFFUSE);
+    glEnable(GL_COLOR_MATERIAL); // without this enabled, glColor4fv does not apply, but the materials do
+    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE); // mix colors
+    //  Set view
+    View(th, ph, fov, dim);
 
-   //code related to lighting
-   // Don't light the light source; use program 0 (fixed pipeline) so lighting enable/disable has meaning.
-   glUseProgram(0);
-   float ambient = 0.2;
-   float diffuse = 0.5;
-   float specular = 0.3;
-   float lTh = 0.0;
-   float l0Position[] = { dim * Cos(lTh), 0.0, -dim * Sin(lTh), 1.0 };
-   glShadeModel(GL_SMOOTH);
-   // draw the light
-   Lighting(l0Position[0], l0Position[1], l0Position[2], ambient, diffuse, specular);
+    //code related to lighting
+    // Don't light the light source; use program 0 (fixed pipeline) so lighting enable/disable has meaning.
+    glUseProgram(0);
+    float ambient = 0.2;
+    float diffuse = 0.5;
+    float specular = 0.3;
+    float lTh = 0.0;
+    float l0Position[] = { dim * Cos(lTh), 0.0, -dim * Sin(lTh), 1.0 };
+    glShadeModel(GL_SMOOTH);
+    // draw the light
+    Lighting(l0Position[0], l0Position[1], l0Position[2], ambient, diffuse, specular);
 
-   // Move the object if necessary (related to hotkeys that bring object to corners of screen)
-   glTranslatef(objX, objY, 0.0);
-   // Enable shader and draw object
-   if (mode)
-   {
-     glUseProgram(shader[mode]);
-     //int id = glGetUniformLocation(shader,"time");
-     //glUniform1f(id,glfwGetTime());
-     int id = glGetUniformLocation(shader[mode], "dim");
-     glUniform1f(id,0.5); // squares of side length 50
-   }
-   if (obj)
-     TexturedIcosahedron(tex);
-   else
-     //TexturedSphere(24, tex);
-     TexturedCube(tex);
+    // Move the object if necessary (related to hotkeys that bring object to corners of screen)
+    glTranslatef(objX, objY, 0.0);
+    // Enable shader and draw object
+    if (mode)
+    {
+        glUseProgram(shader[mode]);
+        //int id = glGetUniformLocation(shader,"time");
+        //glUniform1f(id,glfwGetTime());
+        int id = glGetUniformLocation(shader[mode], "dim");
+        glUniform1f(id, 0.5); // squares of side length 50
+    }
+    // make a lawn of 6 by 10 blades of grass per patch. Without scaling, a patch takes up a [-1, 1] area.
+    // place the blades 0.3 apart horizontally and 0.2 apart along z
+    // if the number of grass patches changed, then destroy the existing grassHeights array and create a new one
+    if (numPatches != oldNumPatches) {
+      oldNumPatches = numPatches;
+      if (grassHeights) {
+        free(grassHeights);
+      }
+      int numBlades = 10*numPatches*6*numPatches;
+      grassHeights = malloc(numBlades*sizeof(double));
+      // initialze the random heights
+      for (int i = 0; i < numBlades; i++) {
+        grassHeights[i] = 0.1 * ((rand() % 5) + 8); // range of heights is [0.8, 1.2]
+      }
+    }
+    // now draw the lawn
+    glPushMatrix();
+    glTranslated(0.0, 0.0, -numPatches); // start at the back row
+    for(int i = 0; i < 10*numPatches; i++) {
+      double* rowptr = grassHeights + i*6*numPatches; // add the current row * the length of the rows
+      glPushMatrix();
+      glTranslated(-numPatches, 0.0, 0.0); // start of row (left side)
+      // travserse the row
+      for (int j = 0; j < 6*numPatches; j++) {
+        bladeOfGrass(rowptr[j]);
+        glTranslated(0.30, 0.0, 0.0);
+      }
+      glPopMatrix();
+      glTranslated(0.0, 0.0, 0.2); // change the row
+    }
+    glPopMatrix();
 
    //  Revert to fixed pipeline
    glUseProgram(0);
@@ -78,7 +109,8 @@ void display(GLFWwindow* window)
    //  Display parameters
    SetColor(1,1,1);
    glWindowPos2i(5,5);
-   Print("Angle=%d,%d  Dim=%.1f Projection=%s Mode=%s",th,ph,dim,fov>0?"Perpective":"Orthogonal",text[mode]);
+   int fps = FramesPerSecond();
+   Print("Angle=%d,%d  Dim=%.1f Projection=%s Mode=%s Frames Per Second=%d",th,ph,dim,fov>0?"Perpective":"Orthogonal",text[mode],fps);
    //  Render the scene and make it visible
    ErrCheck("display");
    glFlush();
@@ -171,7 +203,7 @@ void reshape(GLFWwindow* window,int width,int height)
 int main(int argc,char* argv[])
 {
    //  Initialize GLFW
-   GLFWwindow* window = InitWindow("John Salame HW 2 - Procedural Textures",1,600,600,&reshape,&key);
+   GLFWwindow* window = InitWindow("John Salame HW 3 - Performance",0,600,600,&reshape,&key);
 
    //  Load shader
    shader[0] = 0; // Fixed pipeline
@@ -183,6 +215,7 @@ int main(int argc,char* argv[])
 
    //  Event loop
    ErrCheck("init");
+   glEnable(GL_CULL_FACE);
    while(!glfwWindowShouldClose(window))
    {
       //  Display
