@@ -25,8 +25,8 @@ float asp=1;   //  Aspect ratio
 float dim=3;   //  Size of world
 float objX = 0;
 float objY = 0;
-const char* text[NUM_SHADERS] = {"Fixed Pipeline","Sawtooth","Polka Dots","Thorns"};
-int numPatches = 2;
+const char* text[NUM_SHADERS] = {"Fixed Pipeline","Fireflies 1","Polka Dots","Thorns"};
+int numPatches = 3;
 int oldNumPatches = 0;
 double* grassHeights = 0; // will be a 2d array of grass heights
 
@@ -47,6 +47,7 @@ void display(GLFWwindow* window)
     //  Set view
     View(th, ph, fov, dim);
 
+    /*
     //code related to lighting
     // Don't light the light source; use program 0 (fixed pipeline) so lighting enable/disable has meaning.
     glUseProgram(0);
@@ -58,18 +59,52 @@ void display(GLFWwindow* window)
     glShadeModel(GL_SMOOTH);
     // draw the light
     Lighting(l0Position[0], l0Position[1], l0Position[2], ambient, diffuse, specular);
+    */
 
     // Move the object if necessary (related to hotkeys that bring object to corners of screen)
     glTranslatef(objX, objY, 0.0);
+    /*
     // Enable shader and draw object
     if (mode)
     {
-        glUseProgram(shader[mode]);
-        //int id = glGetUniformLocation(shader,"time");
-        //glUniform1f(id,glfwGetTime());
-        int id = glGetUniformLocation(shader[mode], "dim");
-        glUniform1f(id, 0.5); // squares of side length 50
+      glUseProgram(shader[mode]);
+      //int id = glGetUniformLocation(shader,"time");
+      //glUniform1f(id,glfwGetTime());
+      int id = glGetUniformLocation(shader[mode], "dim");
+      glUniform1f(id, 0.5); // squares of side length 50
     }
+    */
+
+    // set up the fireflies
+    GLfloat firefly1[4] = { 1.0, 1.0, 2.0, 1.0 };
+    GLfloat firefly2[4] = { -1.0, 1.0, 1.0, 1.0 };
+    GLfloat firefly3[4] = { 0.0, 1.0, -2.0, 1.0 };
+    GLfloat firefly4[4] = { 0.5, 0.5, 0.0, 1.0 };
+    // add a bit of noise
+    /*
+    for (int i = 1; i < 3; i++) {
+        firefly1[i] += 0.1 * (rand() % 5 - 2);
+        firefly2[i] += 0.1 * (rand() % 5 - 2);
+        firefly3[i] += 0.1 * (rand() % 5 - 2);
+        firefly4[i] += 0.1 * (rand() % 5 - 2);
+    }
+    */
+    // draw the fireflies
+    glUseProgram(0);
+    Sphere(firefly1[0], firefly1[1], firefly1[2], 0.1, 0, 8, 0);
+    Sphere(firefly2[0], firefly2[1], firefly2[2], 0.1, 0, 8, 0);
+    Sphere(firefly3[0], firefly3[1], firefly3[2], 0.1, 0, 8, 0);
+    Sphere(firefly4[0], firefly4[1], firefly4[2], 0.1, 0, 8, 0);
+    // use the firefly shader
+    mode = 1;
+    glUseProgram(shader[mode]);
+    // pass the position of the fireflies
+    glLightfv(GL_LIGHT0, GL_POSITION, firefly1);
+    glLightfv(GL_LIGHT1, GL_POSITION, firefly2);
+    glLightfv(GL_LIGHT2, GL_POSITION, firefly3);
+    glLightfv(GL_LIGHT3, GL_POSITION, firefly4);
+    ErrCheck("fireflies");
+
     // make a lawn of 6 by 10 blades of grass per patch. Without scaling, a patch takes up a [-1, 1] area.
     // place the blades 0.3 apart horizontally and 0.2 apart along z
     // if the number of grass patches changed, then destroy the existing grassHeights array and create a new one
@@ -174,6 +209,13 @@ void key(GLFWwindow* window,int key,int scancode,int action,int mods)
    //  PageUp key - decrease dim (zoom in)
    else if ((key==GLFW_KEY_PAGE_UP || key == GLFW_KEY_RIGHT_BRACKET) && dim > 1)
       dim -= 0.1;
+   // Plus sign - increase number of grass patches
+   else if (mods==GLFW_MOD_SHIFT && key==GLFW_KEY_EQUAL) {
+       numPatches++;
+   }
+   else if (key == GLFW_KEY_MINUS) {
+       numPatches = (numPatches > 0 ? numPatches-1 : 1);
+   }
 
    //  Wrap angles
    th %= 360;
@@ -207,7 +249,7 @@ int main(int argc,char* argv[])
 
    //  Load shader
    shader[0] = 0; // Fixed pipeline
-   shader[1] = CreateShaderProg("lighting.vert","sawtooth.frag");
+   shader[1] = CreateShaderProg("firefly1.vert", NULL);
    shader[2] = CreateShaderProg("lighting.vert", "polka.frag");
    shader[3] = CreateShaderProg("lighting.vert", "thorns.frag");
    //  Load textures
