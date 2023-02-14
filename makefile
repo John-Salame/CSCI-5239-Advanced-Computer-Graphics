@@ -1,5 +1,5 @@
 # Homework 1
-EXE=hw3
+EXE=hw4
 
 # Main target
 all: $(EXE)
@@ -24,7 +24,7 @@ CLEAN=rm -f $(EXE) *.o *.a
 endif
 
 # Dependencies
-hw3.o: hw3.c grass.h CSCIx239.h
+hw4.o: hw4.c grass.h CSCIx239.h
 fatal.o: fatal.c CSCIx239.h
 errcheck.o: errcheck.c CSCIx239.h
 print.o: print.c CSCIx239.h
@@ -57,7 +57,7 @@ CSCIx239.a:fatal.o errcheck.o print.o axes.o loadtexbmp.o loadobj.o projection.o
 	g++ -c $(CFLG)  $<
 
 #  Link
-hw3:hw3.o    grass.c   CSCIx239.a
+hw4:hw4.o    grass.c   CSCIx239.a
 	gcc $(CFLG) -o $@ $^  $(LIBS)
 
 #  Clean

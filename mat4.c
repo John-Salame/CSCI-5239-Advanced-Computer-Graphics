@@ -20,7 +20,7 @@ void mat4identity(float mat[])
 }
 
 //
-//  Copy 4x4 matrix
+//  Copy 4x4 matrix (copy m into mat)
 //
 void mat4copy(float mat[],float m[])
 {
