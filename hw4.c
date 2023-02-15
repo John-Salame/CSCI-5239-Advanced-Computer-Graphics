@@ -192,12 +192,14 @@ void display(GLFWwindow* window)
     mat4translate(modelViewMat, 0.0, 0.0, 0.2); // change the row
   }
   mat4copy(modelViewMat, modelView1); // replacement for glPopMatrix()
+  PassMatricesToShader(shader[mode], modelViewMat, projectionMat);
 
   //  Release attribute arrays
   glBindVertexArray(0);
 
   //  Revert to fixed pipeline
   glUseProgram(0);
+#ifndef APPLE_GL4
   //  Display axes
   Axes(2);
   //  Display parameters
@@ -205,6 +207,7 @@ void display(GLFWwindow* window)
   glWindowPos2i(5,5);
   int fps = FramesPerSecond();
   Print("Angle=%d,%d  Dim=%.1f Projection=%s Mode=%s Frames Per Second=%d",th,ph,dim,fov>0?"Perpective":"Orthogonal",text[mode],fps);
+#endif
   //  Render the scene and make it visible
   ErrCheck("display");
   glFlush();
