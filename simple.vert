@@ -6,9 +6,11 @@
 uniform mat4 ModelViewMatrix;
 uniform mat4 ModelViewProjectionMatrix;
 uniform mat3 NormalMatrix;
+
+in vec3 Vertex;
 out vec4 FrontColor;
 
 void main() {
-  gl_Position = ModelViewProjectionMatrix * gl_Vertex;
+  gl_Position = ModelViewProjectionMatrix * vec4(Vertex, 1.0);
   FrontColor = vec4(1.0);
 }

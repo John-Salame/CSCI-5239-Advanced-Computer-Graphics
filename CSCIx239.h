@@ -66,6 +66,7 @@ int  CreateShaderProgAttr(char* VertFile,char* FragFile,char* Name[]);
 int  CreateShaderProgGeom(const char* vert,const char* geom,const char* frag);
 
 //  Basic objects
+void SimpleIcosahedron(unsigned int shader);
 void SolidCube();
 void SolidSphere(int n);
 void SolidCylinder(int n);

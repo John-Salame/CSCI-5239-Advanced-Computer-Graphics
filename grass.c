@@ -66,8 +66,9 @@ int getNumRowsPerGrass() {
 // copy a single blade of grass to the destination
 void copyGrassData(float* dest, int numBlades) {
   int step = sizeof(grassData); // size of one blade of grass
+  printf("Grass numBytes 1872 = %d\n", step);
   for (int i = 0; i < numBlades; i++) {
-	memcpy(dest + step, grassData, sizeof(grassData));
+	memcpy(dest + step, grassData, step);
   }
 }
 

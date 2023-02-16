@@ -23,8 +23,7 @@ int obj=1;     //  Object
 int shader[NUM_SHADERS];  //  Shader
 float asp=1;   //  Aspect ratio
 float dim=3;   //  Size of world
-float objX = 0;
-float objY = 0;
+float lTh = 0.0; // theta for calculating light position
 const char* text[NUM_SHADERS] = {"Simple Shader","Fireflies 1"};
 int numPatches = 3;
 int oldNumPatches = 0;
@@ -34,6 +33,8 @@ unsigned int grassVbo = 0;
 unsigned int grassVao = 0;
 
 // OPENGL4 STUFF
+unsigned int id = 0; // shader input locations
+float viewMat[16];
 float modelViewMat[16];
 float projectionMat[16];
 float modelView1[16]; // temporary solution to glPushMatrix()
@@ -41,7 +42,7 @@ float modelView2[16]; // temporary solution to glPushMatrix()
 
 
 // Helper function for modifying 
-void PassMatricesToShader(int shaderProgram, float modelViewMat[], float projectionMat[]) {
+void PassMatricesToShader(int shaderProgram, float viewMat[], float modelViewMat[], float projectionMat[]) {
   float modelViewProjectionMat[16];
   float normalMat[9];
   mat4identity(modelViewProjectionMat);
@@ -50,7 +51,9 @@ void PassMatricesToShader(int shaderProgram, float modelViewMat[], float project
   mat4multMatrix(modelViewProjectionMat, modelViewMat);
   // calculate normal matrix from ModelViewMatrix
   mat4normalMatrix(modelViewMat, normalMat);
-  int id = glGetUniformLocation(shaderProgram, "ModelViewMatrix");
+  int id = glGetUniformLocation(shaderProgram, "ViewMatrix");
+  glUniformMatrix4fv(id, 1, 0, viewMat);
+  id = glGetUniformLocation(shaderProgram, "ModelViewMatrix");
   glUniformMatrix4fv(id, 1, 0, modelViewMat);
   id = glGetUniformLocation(shaderProgram, "ModelViewProjectionMatrix");
   glUniformMatrix4fv(id, 1, 0, modelViewProjectionMat);
@@ -74,36 +77,43 @@ void display(GLFWwindow* window)
   glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE); // mix colors
 
   //  Set view
-  // View(th, ph, fov, dim);
-  ViewGL4(modelViewMat, th, ph, fov, dim);
+  ViewGL4(viewMat, th, ph, fov, dim);
+  mat4copy(modelViewMat, viewMat);
 
-  /*
-  //code related to lighting
-  // Don't light the light source; use program 0 (fixed pipeline) so lighting enable/disable has meaning.
-  glUseProgram(0);
-  float ambient = 0.2;
-  float diffuse = 0.5;
-  float specular = 0.3;
-  float lTh = 0.0;
-  float l0Position[] = { dim * Cos(lTh), 0.0, -dim * Sin(lTh), 1.0 };
-  glShadeModel(GL_SMOOTH);
-  // draw the light
-  Lighting(l0Position[0], l0Position[1], l0Position[2], ambient, diffuse, specular);
-  */
+  // Place the light
+  float position[] = { 3 * Cos(lTh), 0.0, 3 * Sin(lTh), 1.0 };
+  glUseProgram(shader[0]); // simple shader
+  mat4copy(modelView1, modelViewMat); // replacement for glPushMatrix()
+  // translate and scale down the icosahedron
+  mat4translate(modelViewMat, position[0], position[1], position[2]);
+  mat4scale(modelViewMat, 0.2, 0.2, 0.2);
+  PassMatricesToShader(shader[0], viewMat, modelViewMat, projectionMat);
+  SimpleIcosahedron(shader[0]); // represents a point light
+  mat4copy(modelViewMat, modelView1); // replacement for glPopMatrix()
 
-  /*
-  // Enable shader and draw object
-  if (mode)
-  {
-    glUseProgram(shader[mode]);
-    //int id = glGetUniformLocation(shader,"time");
-    //glUniform1f(id,glfwGetTime());
-    int id = glGetUniformLocation(shader[mode], "dim");
-    glUniform1f(id, 0.5); // squares of side length 50
-  }
-  */
+  // Set the light parameters
+  // Note: I don't have any material properties, so color is used as the material property for every type of lighting.
+  glUseProgram(shader[mode]);
+  float global[] = { 0.1,0.1,0.1,1.0 };
+  float ambient[] = { 0.2,0.2,0.2,1.0 };
+  float diffuse[] = { 0.5,0.5,0.5,1.0 };
+  float specular[] = { 0.2,0.2,0.2,1.0 };
+  //  Set light property uniforms
+  id = glGetUniformLocation(shader[mode], "fov");
+  glUniform1f(id, fov);
+  id = glGetUniformLocation(shader[mode], "Global");
+  glUniform4fv(id, 1, global);
+  id = glGetUniformLocation(shader[mode], "Ambient");
+  glUniform4fv(id, 1, ambient);
+  id = glGetUniformLocation(shader[mode], "Diffuse");
+  glUniform4fv(id, 1, diffuse);
+  id = glGetUniformLocation(shader[mode], "Specular");
+  glUniform4fv(id, 1, specular);
+  id = glGetUniformLocation(shader[mode], "Position");
+  glUniform4fv(id, 1, position);
 
-  // set up the fireflies
+
+  // Set up the fireflies
   GLfloat firefly1[4] = { 1.0, 1.0, 2.0, 1.0 };
   GLfloat firefly2[4] = { -1.0, 1.0, 1.0, 1.0 };
   GLfloat firefly3[4] = { 0.0, 1.0, -2.0, 1.0 };
@@ -146,7 +156,9 @@ void display(GLFWwindow* window)
     if (grassDataMain) {
         free(grassDataMain);
     }
+    // create the buffers
     int numBlades = 10*numPatches*6*numPatches;
+    printf("Number of blades: %d\n", numBlades);
     grassHeights = malloc(numBlades*sizeof(double));
     // initialze the random heights
     for (int i = 0; i < numBlades; i++) {
@@ -157,6 +169,7 @@ void display(GLFWwindow* window)
     printf("Allocating grass VBO of size %d\n", grassVboSize);
     grassDataMain = malloc(grassVboSize);
     copyGrassData(grassDataMain, numBlades);
+
     // TO-DO: modify the array based on grass height
     InitGrassVBO(grassDataMain, grassVboSize, &grassVbo);
     printf("VBO: %d\n", grassVbo);
@@ -182,7 +195,7 @@ void display(GLFWwindow* window)
     mat4translate(modelViewMat, -numPatches, 0.0, 0.0); // start of row (left side)
     // travserse the row
     for (int j = 0; j < 6*numPatches; j++) {
-      PassMatricesToShader(shader[mode], modelViewMat, projectionMat);
+      PassMatricesToShader(shader[mode], viewMat, modelViewMat, projectionMat);
       // bladeOfGrass(rowptr[j]);
       glDrawArrays(GL_TRIANGLES, drawStart, grassVertices);
       mat4translate(modelViewMat, 0.30, 0.0, 0.0);
@@ -192,7 +205,7 @@ void display(GLFWwindow* window)
     mat4translate(modelViewMat, 0.0, 0.0, 0.2); // change the row
   }
   mat4copy(modelViewMat, modelView1); // replacement for glPopMatrix()
-  PassMatricesToShader(shader[mode], modelViewMat, projectionMat);
+  PassMatricesToShader(shader[mode], viewMat, modelViewMat, projectionMat);
 
   //  Release attribute arrays
   glBindVertexArray(0);
@@ -228,7 +241,6 @@ void key(GLFWwindow* window,int key,int scancode,int action,int mods)
    //  Reset view angle
    else if (key == GLFW_KEY_0) {
        th = ph = 0;
-       objX = 0; objY = 0;
    }
    //  Switch shaders
    else if (key==GLFW_KEY_M)
@@ -290,27 +302,29 @@ void reshape(GLFWwindow* window,int width,int height)
 //
 int main(int argc,char* argv[])
 {
-   //  Initialize GLFW
-   GLFWwindow* window = InitWindow("John Salame HW 3 - Performance",0,600,600,&reshape,&key);
+  //  Initialize GLFW
+  GLFWwindow* window = InitWindow("John Salame HW 3 - Performance",0,600,600,&reshape,&key);
 
-   //  Load shader
-   shader[0] = CreateShaderProg("simple.vert", "simple.frag");
-   shader[1] = CreateShaderProg("firefly1.vert", "simple.frag");
-   //  Load textures
-   tex = LoadTexBMP("pi.bmp");
+  //  Load shader
+  shader[0] = CreateShaderProg("simple.vert", "simple.frag");
+  shader[1] = CreateShaderProg("firefly1.vert", "simple.frag");
+  //  Load textures
+  tex = LoadTexBMP("pi.bmp");
 
-   //  Event loop
-   ErrCheck("init");
-   glEnable(GL_CULL_FACE);
-   while(!glfwWindowShouldClose(window))
-   {
-      //  Display
-      display(window);
-      //  Process any events
-      glfwPollEvents();
-   }
-   //  Shut down GLFW
-   glfwDestroyWindow(window);
-   glfwTerminate();
-   return 0;
+  //  Event loop
+  ErrCheck("init");
+  glEnable(GL_CULL_FACE);
+  while(!glfwWindowShouldClose(window))
+  {
+    // Move the light
+    lTh = fmod(90 * glfwGetTime(), 360);
+    //  Display
+    display(window);
+    //  Process any events
+    glfwPollEvents();
+  }
+  //  Shut down GLFW
+  glfwDestroyWindow(window);
+  glfwTerminate();
+  return 0;
 }
