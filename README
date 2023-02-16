@@ -10,14 +10,12 @@ Uses OpenGL 4 to create a scene.
 
 ### Limitations
 Currently I do not have everything I wanted. I originally had a sort of lawn made of many instances of grass. However, it only draws one.
-Perhaps it is drawing all of them on top of each other since my transform matrices are uniform variables.  
-I also do not yet have lighting or textures. I am not sure what I would apply textures to.  
-I also had fireflies that acted as small point lights when I was working on homework 3, but those fireflies are not fixed yet in GL4.  
+I have lighting but no textures. I am not sure what I would put textures on.  
+I also had fireflies that acted as small point lights when I was working on homework 3, but those fireflies are not fixed yet in GL4.
+I could add them, but there is only a single blade of grass to illuminate.    
 There is also a message "invalid value" in the VAO creator function for the blade of grass. I am not sure why.
 
 ## Interaction
-Press M to switch shaders and look at different generated textures.  
-Press O to toggle between cube and icosahedron.  
 Press P to toggle projection mode (orthogonal or perspective).  
 Press the nubmer 0 to re-center the object.  
 Use arrow keys to make the camera orbit the scene.
@@ -25,11 +23,10 @@ Use arrow keys to make the camera orbit the scene.
 
 ### Key bindings
   0          Reset the view
-  m          Toggle shader
-  o          Change objects
   p          Change projection mode
   arrows     Change view angle
   PgDn/PgUp  Zoom in and out
   ] and [    Zoom in and out
+  +/-        Make the blade of grass go closer/further to the origin (originally changed the number of blades of grass in the lawn)
   0          Reset view angle
   ESC        Exit
