@@ -85,18 +85,18 @@ void SimpleIcosahedron(unsigned int shader) {
       //  Copy icosahedron to VBO
       glBufferData(GL_ARRAY_BUFFER, sizeof(data), data, GL_STATIC_DRAW);
   }
-  // Initialize the VAO on first use
-  if (!vao) {
-    glGenVertexArrays(1, &vao);
-    glBindVertexArray(vao); // use the VAO
-    glBindBuffer(GL_ARRAY_BUFFER, vbo); // Bind VBO
-    int loc = glGetAttribLocation(shader, "Vertex");
-    glVertexAttribPointer(loc, 3, GL_FLOAT, 0, 44, (void*)0);
-    glEnableVertexAttribArray(loc);
-  }
   //  On subsequanet calls, just bind VBO
   else
       glBindBuffer(GL_ARRAY_BUFFER, vbo);
+  // Initialize the VAO on first use
+  if (!vao) {
+      glGenVertexArrays(1, &vao);
+      glBindVertexArray(vao); // use the VAO
+      glBindBuffer(GL_ARRAY_BUFFER, vbo); // Bind VBO
+      int loc = glGetAttribLocation(shader, "Vertex");
+      glVertexAttribPointer(loc, 3, GL_FLOAT, 0, 44, (void*)0);
+      glEnableVertexAttribArray(loc);
+  }
 
   //  Draw icosahedron
   glDrawArrays(GL_TRIANGLES, 0, n);
@@ -104,6 +104,11 @@ void SimpleIcosahedron(unsigned int shader) {
   glBindBuffer(GL_ARRAY_BUFFER, 0);
   //  Release VAO
   glBindVertexArray(0);
+  ErrCheck("simple icosahedron");
+}
+void CleanupIcosahedron() {
+    glDeleteBuffers(1, &vbo);
+    glDeleteBuffers(1, &vbo);
 }
 
 //

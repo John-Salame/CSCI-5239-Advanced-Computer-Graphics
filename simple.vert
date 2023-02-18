@@ -3,6 +3,7 @@
 // This is useful for axes and light sources
 #version 400 core
 
+uniform mat4 ViewMatrix;
 uniform mat4 ModelViewMatrix;
 uniform mat4 ModelViewProjectionMatrix;
 uniform mat3 NormalMatrix;

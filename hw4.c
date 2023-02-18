@@ -14,7 +14,7 @@
 #include <stdlib.h>
 #include "CSCIx239.h"
 #include "grass.h"
-int mode=0;    //  Shader
+int mode=1;    //  Shader
 int th=0,ph=0; //  View angles
 int fov=57;    //  Field of view (for perspective)
 int tex=0;     //  Texture
@@ -31,6 +31,11 @@ double* grassHeights = 0; // will be a 2d array of grass heights
 float* grassDataMain = 0;
 unsigned int grassVbo = 0;
 unsigned int grassVao = 0;
+// base plate with grass texture
+unsigned int baseVbo = 0;
+unsigned int baseVao = 0;
+unsigned int grassTexture = 0;
+unsigned int blankTexture = 0; // a single white pixel, used for untextured objects
 
 // OPENGL4 STUFF
 unsigned int id = 0; // shader input locations
@@ -40,8 +45,17 @@ float projectionMat[16];
 float modelView1[16]; // temporary solution to glPushMatrix()
 float modelView2[16]; // temporary solution to glPushMatrix()
 
+const float basePlate[] = {
+//  X    Y     Z      nx  ny  nz     R   G   B      tX  tY
+  -5.0, 0.0, -5.0,   0.0,1.0,0.0,   1.0,1.0,1.0,   0.0,1.0,
+  -5.0, 0.0,  5.0,   0.0,1.0,0.0,   1.0,1.0,1.0,   0.0,0.0,
+  5.0,  0.0, -5.0,   0.0,1.0,0.0,   1.0,1.0,1.0,   1.0,1.0,
+  5.0,  0.0, -5.0,   0.0,1.0,0.0,   1.0,1.0,1.0,   1.0,1.0,
+  -5.0, 0.0,  5.0,   0.0,1.0,0.0,   1.0,1.0,1.0,   0.0,0.0,
+  5.0,  0.0,  5.0,   0.0,1.0,0.0,   1.0,1.0,1.0,   1.0,0.0,
+};
 
-// Helper function for modifying 
+// Helper function for updating matrices in shader
 void PassMatricesToShader(int shaderProgram, float viewMat[], float modelViewMat[], float projectionMat[]) {
   float modelViewProjectionMat[16];
   float normalMat[9];
@@ -59,6 +73,71 @@ void PassMatricesToShader(int shaderProgram, float viewMat[], float modelViewMat
   glUniformMatrix4fv(id, 1, 0, modelViewProjectionMat);
   id = glGetUniformLocation(shaderProgram, "NormalMatrix");
   glUniformMatrix3fv(id, 1, 0, normalMat);
+  ErrCheck("PassMatricesToShader()");
+}
+
+void DrawBasePlate(unsigned int shader, unsigned int texture) {
+    glUseProgram(shader);
+  if (baseVbo == 0) {
+    glGenBuffers(1, &baseVbo);
+    glBindBuffer(GL_ARRAY_BUFFER, baseVbo); // use VBO
+    glBufferData(GL_ARRAY_BUFFER, sizeof(basePlate), basePlate, GL_STATIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, 0); // Release VBO
+  }
+  ErrCheck("base plate vbo");
+  // Apply VAO
+  if (baseVao == 0) {
+    glGenVertexArrays(1, &baseVao);
+    glBindVertexArray(baseVao); // use VAO
+    glBindBuffer(GL_ARRAY_BUFFER, baseVbo); // use VBO
+    ErrCheck("base plate vao beginning");
+    // Bind attribute locations
+    int loc = glGetAttribLocation(shader, "Vertex");
+    glVertexAttribPointer(loc, 3, GL_FLOAT, 0, 44, (void*)0);
+    glEnableVertexAttribArray(loc);
+    ErrCheck("base plate Vertex");
+    //  Normal
+    loc = glGetAttribLocation(shader, "Normal");
+    glVertexAttribPointer(loc, 3, GL_FLOAT, 0, 44, (void*)12);
+    glEnableVertexAttribArray(loc);
+    ErrCheck("base plate Normal");
+    //  Color
+    loc = glGetAttribLocation(shader, "Color");
+    glVertexAttribPointer(loc, 3, GL_FLOAT, 0, 44, (void*)24);
+    glEnableVertexAttribArray(loc);
+    ErrCheck("base plate Color");
+    //  Texture
+    loc = glGetAttribLocation(shader, "Texture");
+    glVertexAttribPointer(loc, 2, GL_FLOAT, 0, 44, (void*)36);
+    glEnableVertexAttribArray(loc);
+    ErrCheck("base plate Texture");
+    // Release VBO
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    // Release VAO
+    glBindVertexArray(0);
+  }
+  ErrCheck("base plate vao");
+  // Draw the base plate
+  glBindTexture(GL_TEXTURE_2D, texture);
+  glBindVertexArray(baseVao); // use VAO
+  glDrawArrays(GL_TRIANGLES, 0, 6);
+  // Release VBO
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+  // Release VAO
+  glBindVertexArray(0);
+  // Reset texture
+  glBindTexture(GL_TEXTURE_2D, blankTexture);
+  ErrCheck("base plate");
+}
+void Exit() {
+  glDeleteBuffers(1, &grassVbo);
+  glDeleteBuffers(1, &baseVbo);
+  CleanupIcosahedron();
+}
+// default view when you start the program or press 0
+void ResetView() {
+    ph = 30;
+    th = 0;
 }
 
 //
@@ -80,9 +159,9 @@ void display(GLFWwindow* window)
   ViewGL4(viewMat, th, ph, fov, dim);
   mat4copy(modelViewMat, viewMat);
 
-  // Place the light
-  float position[] = { 3 * Cos(lTh), 0.0, 3 * Sin(lTh), 1.0 };
+  // Place the light using shader 0 (simple shader)
   glUseProgram(shader[0]); // simple shader
+  float position[] = { 3 * Cos(lTh), 1.0, 3 * Sin(lTh), 1.0 };
   mat4copy(modelView1, modelViewMat); // replacement for glPushMatrix()
   // translate and scale down the icosahedron
   mat4translate(modelViewMat, position[0], position[1], position[2]);
@@ -90,6 +169,7 @@ void display(GLFWwindow* window)
   PassMatricesToShader(shader[0], viewMat, modelViewMat, projectionMat);
   SimpleIcosahedron(shader[0]); // represents a point light
   mat4copy(modelViewMat, modelView1); // replacement for glPopMatrix()
+  ErrCheck("Icosahedron light");
 
   // Set the light parameters
   // Note: I don't have any material properties, so color is used as the material property for every type of lighting.
@@ -112,21 +192,24 @@ void display(GLFWwindow* window)
   id = glGetUniformLocation(shader[mode], "Position");
   glUniform4fv(id, 1, position);
 
+  // draw the base plate
+  PassMatricesToShader(shader[mode], viewMat, modelViewMat, projectionMat);
+  ErrCheck("before base plate");
+  DrawBasePlate(shader[mode], grassTexture);
 
+  /*
   // Set up the fireflies
   GLfloat firefly1[4] = { 1.0, 1.0, 2.0, 1.0 };
   GLfloat firefly2[4] = { -1.0, 1.0, 1.0, 1.0 };
   GLfloat firefly3[4] = { 0.0, 1.0, -2.0, 1.0 };
   GLfloat firefly4[4] = { 0.5, 0.5, 0.0, 1.0 };
   // add a bit of noise
-  /*
   for (int i = 1; i < 3; i++) {
     firefly1[i] += 0.1 * (rand() % 5 - 2);
     firefly2[i] += 0.1 * (rand() % 5 - 2);
     firefly3[i] += 0.1 * (rand() % 5 - 2);
     firefly4[i] += 0.1 * (rand() % 5 - 2);
   }
-  */
   // draw the fireflies
   float fireflyModelViewMat[16];
   mat4copy(fireflyModelViewMat, modelViewMat); // store the current modelViewMatrix so we can place the fireflies in the scene and remember their positions for later
@@ -144,6 +227,7 @@ void display(GLFWwindow* window)
   glLightfv(GL_LIGHT2, GL_POSITION, firefly3);
   glLightfv(GL_LIGHT3, GL_POSITION, firefly4);
   ErrCheck("fireflies");
+  */
 
   // make a lawn of 6 by 10 blades of grass per patch. Without scaling, a patch takes up a [-1, 1] area.
   // place the blades 0.3 apart horizontally and 0.2 apart along z
@@ -171,10 +255,16 @@ void display(GLFWwindow* window)
     copyGrassData(grassDataMain, numBlades);
 
     // TO-DO: modify the array based on grass height
+    int grassVertices = getNumVerticesPerGrass();
+    float* seek = grassDataMain + 1; // start at the first y value
+    for (int i = 0; i < numBlades; i++) {
+      for (int j = 0; j < grassVertices; j++) {
+        *(seek) *= grassHeights[i];
+        seek += 13; // skip 13 floats since that is how many attributes exist per vertex
+      }
+    }
     InitGrassVBO(grassDataMain, grassVboSize, &grassVbo);
-    printf("VBO: %d\n", grassVbo);
     InitGrassVAO(shader[mode], &grassVbo, &grassVao);
-    printf("VAO: %d\n", grassVao);
     ErrCheck("grass main");
   }
 
@@ -184,7 +274,7 @@ void display(GLFWwindow* window)
   glUseProgram(shader[mode]);
   //  Bind attribute arrays using VAO (VAO knows VBO to use)
   glBindVertexArray(grassVao);
-  int grassVertices = getNumRowsPerGrass(); // number of vertices per blade of grass
+  int grassVertices = getNumVerticesPerGrass(); // number of vertices per blade of grass
   int drawStart = 0; // offset to draw from in glDrawArrays()
 
   mat4copy(modelView1, modelViewMat); // replacement for glPushMatrix()
@@ -214,7 +304,7 @@ void display(GLFWwindow* window)
   glUseProgram(0);
 #ifndef APPLE_GL4
   //  Display axes
-  Axes(2);
+  // Axes(2);
   //  Display parameters
   SetColor(1,1,1);
   glWindowPos2i(5,5);
@@ -240,7 +330,7 @@ void key(GLFWwindow* window,int key,int scancode,int action,int mods)
        glfwSetWindowShouldClose(window, 1);
    //  Reset view angle
    else if (key == GLFW_KEY_0) {
-       th = ph = 0;
+       ResetView();
    }
    //  Switch shaders
    else if (key==GLFW_KEY_M)
@@ -307,13 +397,16 @@ int main(int argc,char* argv[])
 
   //  Load shader
   shader[0] = CreateShaderProg("simple.vert", "simple.frag");
-  shader[1] = CreateShaderProg("firefly1.vert", "simple.frag");
+  shader[1] = CreateShaderProg("firefly1.vert", "texture.frag");
   //  Load textures
   tex = LoadTexBMP("pi.bmp");
+  grassTexture = LoadTexBMP("grass.bmp");
+  blankTexture = LoadTexBMP("blank.bmp");
 
   //  Event loop
   ErrCheck("init");
   glEnable(GL_CULL_FACE);
+  ResetView();
   while(!glfwWindowShouldClose(window))
   {
     // Move the light
@@ -326,5 +419,6 @@ int main(int argc,char* argv[])
   //  Shut down GLFW
   glfwDestroyWindow(window);
   glfwTerminate();
+  Exit();
   return 0;
 }
