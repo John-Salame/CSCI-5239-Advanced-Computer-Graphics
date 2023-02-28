@@ -51,6 +51,7 @@ float modelView2[16]; // temporary solution to glPushMatrix()
 // shader program names
 unsigned int simpleShader = 0;
 unsigned int fireflyShader = 0;
+unsigned int textureShader = 0;
 
 // IMAGE PROCESSING (homework 6), set inside reshape()
 unsigned int depthbuf = 0;  //  Depth buffer
@@ -102,7 +103,7 @@ void PassMatricesToShader(int shaderProgram, float viewMat[], float modelViewMat
   ErrCheck("PassMatricesToShader()");
 }
 
-void DrawCanvas(unsigned int shader) {
+void DrawCanvas(unsigned int shader, unsigned int texture) {
   //  Initialize VBO on first use
   if (!canvasVbo)
   {
@@ -129,6 +130,7 @@ void DrawCanvas(unsigned int shader) {
     glEnableVertexAttribArray(loc);
   }
 
+  glBindTexture(GL_TEXTURE_2D, texture);
   glBindVertexArray(canvasVao); // use the VAO
   //  Draw canvas rectangle
   glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -136,7 +138,7 @@ void DrawCanvas(unsigned int shader) {
   glBindBuffer(GL_ARRAY_BUFFER, 0);
   //  Release VAO
   glBindVertexArray(0);
-  ErrCheck("simple icosahedron");
+  ErrCheck("draw canvas");
 }
 
 void DrawBasePlate(unsigned int shader, unsigned int texture) {
@@ -208,14 +210,14 @@ void ResetView() {
 //
 void display(GLFWwindow* window)
 {
-  /*
   //  Send all output to frame buffer 0
-  glBindFramebuffer(GL_FRAMEBUFFER, framebuf[0]); // from example 8 - image processing
-  */
+  // glBindFramebuffer(GL_FRAMEBUFFER, framebuf[0]); // from example 8 - image processing
   //  Erase the window and the depth buffer
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   //  Enable Z-buffering in OpenGL
   glEnable(GL_DEPTH_TEST);
+  glEnable(GL_CULL_FACE);
+  glEnable(GL_TEXTURE_2D);
 
   /*
   //  Set material and lighting interaction (not sure if this matters outside of fixed pipeline)
@@ -405,12 +407,13 @@ void display(GLFWwindow* window)
   mat4copy(modelViewMat, modelView1); // replacement for glPopMatrix()
   PassMatricesToShader(fireflyShader, viewMat, modelViewMat, projectionMat);
 
-  glUseProgram(simpleShader);
-  PassMatricesToShader(simpleShader, viewMat, modelViewMat, projectionMat);
-  DrawCanvas(simpleShader);
-
   //  Release attribute arrays
   glBindVertexArray(0);
+
+  int shader = textureShader;
+  glUseProgram(shader);
+  PassMatricesToShader(shader, viewMat, modelViewMat, projectionMat);
+  DrawCanvas(shader, grassTexture);
 
   //  Revert to fixed pipeline
   glUseProgram(0);
@@ -418,24 +421,29 @@ void display(GLFWwindow* window)
   //  Display axes
   // Axes(2);
 #endif
-  
+
   /*
   // POST-PROCESSING
+  glDisable(GL_CULL_FACE);
   // select post-processing shader
+  unsigned int imageShader = shader[mode];
   glUseProgram(shader[mode]);
   glfwGetWindowSize(window, &width, &height);
-  id = glGetUniformLocation(shader[mode], "dX");
+  id = glGetUniformLocation(imageShader, "dX");
   glUniform1f(id, 1.0 / width);
-  id = glGetUniformLocation(shader[mode], "dY");
+  id = glGetUniformLocation(imageShader, "dY");
   glUniform1f(id, 1.0 / height);
   //  Identity projection
   mat4identity(projectionMat);
   mat4identity(viewMat);
   mat4identity(modelViewMat);
-  PassMatricesToShader(shader[mode], viewMat, modelViewMat, projectionMat);
+  PassMatricesToShader(imageShader, viewMat, modelViewMat, projectionMat);
+  // DrawCanvas(imageShader);
   //  Disable depth test & Enable textures
   glDisable(GL_DEPTH_TEST);
   glEnable(GL_TEXTURE_2D);
+  */
+  /*
   //  Copy entire screen
   for (int i = 0; i < N; i++)
   {
@@ -449,10 +457,11 @@ void display(GLFWwindow* window)
     //  Redraw the screen
     DrawCanvas(shader[mode]);
   }
+  */
   //  Disable textures and shaders
   glDisable(GL_TEXTURE_2D);
+  glEnable(GL_CULL_FACE);
   glUseProgram(0);
-  */
   
   
 #ifndef APPLE_GL4
@@ -590,6 +599,7 @@ int main(int argc,char* argv[])
   //  Load shader
   simpleShader = CreateShaderProg("simple.vert", "simple.frag");
   fireflyShader = CreateShaderProg("firefly1.vert", "texture.frag");
+  textureShader = CreateShaderProg("texture.vert", "texture.frag");
   shader[0] = CreateShaderProg("texture.vert", "blur.frag"); // filter
   shader[1] = CreateShaderProg("texture.vert", "prewitt.frag"); // filter
   //  Load textures
@@ -599,7 +609,6 @@ int main(int argc,char* argv[])
 
   //  Event loop
   ErrCheck("init");
-  glEnable(GL_CULL_FACE);
   ResetView();
   while(!glfwWindowShouldClose(window))
   {

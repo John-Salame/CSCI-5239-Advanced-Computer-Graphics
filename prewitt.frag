@@ -12,6 +12,7 @@ uniform float dX;
 uniform float dY;
 uniform sampler2D img;
 
+in vec4 FrontColor;
 in vec2 Texcoord;
 out vec4 FragColor;
 
