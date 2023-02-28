@@ -1,28 +1,33 @@
+// John Salame
+// Modified from Example 8
 // Prewitt edge detection
 //    -1 -1 -1       1 0 -1
 // H = 0  0  0   V = 1 0 -1
 //     1  1  1       1 0 -1
 //
 // result = sqrt(H^2 + V^2)
-#version 120
+#version 400 core
 
 uniform float dX;
 uniform float dY;
 uniform sampler2D img;
 
-vec4 sample(float dx,float dy)
+in vec2 Texcoord;
+out vec4 FragColor;
+
+vec4 sample_fun(float dx, float dy)
 {
-   return texture2D(img,gl_TexCoord[0].st+vec2(dx,dy));
+   return texture(img,Texcoord.st + vec2(dx,dy));
 }
 
 void main()
 {
-   vec4 H = -sample(-dX,+dY) - sample(0.0,+dY) - sample(+dX,+dY)
-            +sample(-dX,-dY) + sample(0.0,-dY) + sample(+dX,-dY);
+   vec4 H = -sample_fun(-dX,+dY) - sample_fun(0.0,+dY) - sample_fun(+dX,+dY)
+            +sample_fun(-dX,-dY) + sample_fun(0.0,-dY) + sample_fun(+dX,-dY);
 
-   vec4 V = sample(-dX,+dY)  - sample(+dX,+dY)
-          + sample(-dX,0.0)  - sample(+dX,0.0)
-          + sample(-dX,-dY)  - sample(+dX,-dY);
+   vec4 V = sample_fun(-dX,+dY)  - sample_fun(+dX,+dY)
+          + sample_fun(-dX,0.0)  - sample_fun(+dX,0.0)
+          + sample_fun(-dX,-dY)  - sample_fun(+dX,-dY);
 
-   gl_FragColor = sqrt(H*H+V*V);
+   FragColor = sqrt(H*H+V*V);
 }

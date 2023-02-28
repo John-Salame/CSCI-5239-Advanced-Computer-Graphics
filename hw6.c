@@ -24,7 +24,7 @@ int shader[NUM_SHADERS];  //  Shader
 float asp=1;   //  Aspect ratio
 float dim=3;   //  Size of world
 float lTh = 0.0; // theta for calculating light position
-const char* text[NUM_SHADERS] = {"Blur","Prewitt"};
+const char* text[NUM_SHADERS] = {"Blur Filter","Prewitt Filter"};
 int width = 0;
 int height = 0;
 
@@ -58,6 +58,19 @@ unsigned int img[2];      //  Image textures
 unsigned int framebuf[2]; //  Frame buffers
 int N = 1; // num passes
 
+unsigned int canvasVbo = 0;
+unsigned int canvasVao = 0;
+
+const float canvas[] = {
+//  X    Y   Z     tX   tY
+  -1.0, 1.0,0.0,   0.0,1.0,
+  -1.0,-1.0,0.0,   0.0,0.0,
+   1.0, 1.0,0.0,   1.0,1.0,
+   1.0, 1.0,0.0,   1.0,1.0,
+  -1.0,-1.0,0.0,   0.0,0.0,
+   1.0,-1.0,0.0,   1.0,0.0
+};
+
 const float basePlate[] = {
 //  X    Y     Z      nx  ny  nz     R   G   B      tX  tY
   -5.0, 0.0, -5.0,   0.0,1.0,0.0,   1.0,1.0,1.0,   0.0,1.0,
@@ -87,6 +100,42 @@ void PassMatricesToShader(int shaderProgram, float viewMat[], float modelViewMat
   id = glGetUniformLocation(shaderProgram, "NormalMatrix");
   glUniformMatrix3fv(id, 1, 0, normalMat);
   ErrCheck("PassMatricesToShader()");
+}
+
+void DrawCanvas(unsigned int shader) {
+  //  Initialize VBO on first use
+  if (!canvasVbo)
+  {
+    //  Get buffer name
+    glGenBuffers(1, &canvasVbo);
+    //  Bind VBO
+    glBindBuffer(GL_ARRAY_BUFFER, canvasVbo);
+    //  Copy icosahedron to VBO
+    glBufferData(GL_ARRAY_BUFFER, sizeof(canvas), canvas, GL_STATIC_DRAW);
+  }
+  //  On subsequanet calls, just bind VBO
+  else
+    glBindBuffer(GL_ARRAY_BUFFER, canvasVbo);
+  // Initialize the VAO on first use
+  if (!canvasVao) {
+    glGenVertexArrays(1, &canvasVao);
+    glBindVertexArray(canvasVao); // use the VAO
+    glBindBuffer(GL_ARRAY_BUFFER, canvasVbo); // Bind VBO
+    int loc = glGetAttribLocation(shader, "Vertex");
+    glVertexAttribPointer(loc, 3, GL_FLOAT, 0, 16, (void*)0);
+    glEnableVertexAttribArray(loc);
+    loc = glGetAttribLocation(shader, "Texture");
+    glVertexAttribPointer(loc, 2, GL_FLOAT, 0, 16, (void*)12);
+    glEnableVertexAttribArray(loc);
+  }
+
+  //  Draw canvas rectangle
+  glDrawArrays(GL_TRIANGLES, 0, 6);
+  //  Release VBO
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+  //  Release VAO
+  glBindVertexArray(0);
+  ErrCheck("simple icosahedron");
 }
 
 void DrawBasePlate(unsigned int shader, unsigned int texture) {
@@ -366,7 +415,7 @@ void display(GLFWwindow* window)
   int fps = FramesPerSecond();
   Print("Angle=%d,%d  Dim=%.1f Projection=%s Mode=%s Frames Per Second=%d",th,ph,dim,fov>0?"Perpective":"Orthogonal",text[mode],fps);
 #endif
-  /*
+  
   // POST-PROCESSING
   // select post-processing shader
   glUseProgram(shader[mode]);
@@ -379,6 +428,7 @@ void display(GLFWwindow* window)
   mat4identity(projectionMat);
   mat4identity(viewMat);
   mat4identity(modelViewMat);
+  PassMatricesToShader(shader[mode], viewMat, modelViewMat, projectionMat);
   //  Disable depth test & Enable textures
   glDisable(GL_DEPTH_TEST);
   glEnable(GL_TEXTURE_2D);
@@ -393,17 +443,12 @@ void display(GLFWwindow* window)
     //  Input image is from the last framebuffer
     glBindTexture(GL_TEXTURE_2D, img[i % 2]);
     //  Redraw the screen
-    glBegin(GL_QUADS);
-    glTexCoord2f(0, 0); glVertex2f(-1, -1);
-    glTexCoord2f(0, 1); glVertex2f(-1, +1);
-    glTexCoord2f(1, 1); glVertex2f(+1, +1);
-    glTexCoord2f(1, 0); glVertex2f(+1, -1);
-    glEnd();
+    DrawCanvas(shader[mode]);
   }
   //  Disable textures and shaders
   glDisable(GL_TEXTURE_2D);
   glUseProgram(0);
-  */
+  
 
   //  Render the scene and make it visible
   ErrCheck("display");
@@ -479,7 +524,6 @@ void reshape(GLFWwindow* window,int width,int height)
    glViewport(0,0, width,height);
    //  Set projection
    ProjectionGL4(modelViewMat, projectionMat, fov,asp,dim);
-   /*
    // Taken from Example 8
    //
    //  Allocate a frame buffer
@@ -520,7 +564,6 @@ void reshape(GLFWwindow* window,int width,int height)
    glBindFramebuffer(GL_FRAMEBUFFER, 0);
    ErrCheck("Framebuffer");
    // End of code from Example 8
-   */
 }
 
 //
@@ -534,8 +577,8 @@ int main(int argc,char* argv[])
   //  Load shader
   simpleShader = CreateShaderProg("simple.vert", "simple.frag");
   fireflyShader = CreateShaderProg("firefly1.vert", "texture.frag");
-  shader[0] = CreateShaderProg("simple.vert", "simple.frag"); // filter
-  shader[1] = CreateShaderProg(NULL, "blur.frag"); // filter
+  shader[0] = CreateShaderProg("texture.vert", "blur.frag"); // filter
+  shader[1] = CreateShaderProg("texture.vert", "prewitt.frag"); // filter
   //  Load textures
   tex = LoadTexBMP("pi.bmp");
   grassTexture = LoadTexBMP("grass.bmp");
