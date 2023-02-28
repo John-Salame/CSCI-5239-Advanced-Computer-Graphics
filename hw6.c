@@ -14,7 +14,7 @@
 #include <stdlib.h>
 #include "CSCIx239.h"
 #include "grass.h"
-int mode=1;    //  Shader
+int mode=0;    //  Shader
 int th=0,ph=0; //  View angles
 int fov=57;    //  Field of view (for perspective)
 int tex=0;     //  Texture
@@ -57,7 +57,7 @@ unsigned int textureShader = 0;
 unsigned int depthbuf = 0;  //  Depth buffer
 unsigned int img[2];      //  Image textures
 unsigned int framebuf[2]; //  Frame buffers
-int N = 1; // num passes
+int N = 3; // num passes
 
 unsigned int canvasVbo = 0;
 unsigned int canvasVao = 0;
@@ -410,10 +410,12 @@ void display(GLFWwindow* window)
   //  Release attribute arrays
   glBindVertexArray(0);
 
-  int shader = textureShader;
-  glUseProgram(shader);
-  PassMatricesToShader(shader, viewMat, modelViewMat, projectionMat);
-  DrawCanvas(shader, grassTexture);
+  /*
+  int shaderNow = textureShader;
+  glUseProgram(shaderNow);
+  PassMatricesToShader(shaderNow, viewMat, modelViewMat, projectionMat);
+  DrawCanvas(shaderNow, grassTexture);
+  */
 
   //  Revert to fixed pipeline
   glUseProgram(0);
@@ -422,7 +424,6 @@ void display(GLFWwindow* window)
   // Axes(2);
 #endif
 
-  /*
   // POST-PROCESSING
   glDisable(GL_CULL_FACE);
   // select post-processing shader
@@ -433,16 +434,16 @@ void display(GLFWwindow* window)
   glUniform1f(id, 1.0 / width);
   id = glGetUniformLocation(imageShader, "dY");
   glUniform1f(id, 1.0 / height);
-  //  Identity projection
+  //  Identity projection (allow the canvas to cover the whole screen)
   mat4identity(projectionMat);
   mat4identity(viewMat);
   mat4identity(modelViewMat);
   PassMatricesToShader(imageShader, viewMat, modelViewMat, projectionMat);
-  // DrawCanvas(imageShader);
+  // DrawCanvas(imageShader, img[0]);
+  DrawCanvas(imageShader, grassTexture);
   //  Disable depth test & Enable textures
   glDisable(GL_DEPTH_TEST);
   glEnable(GL_TEXTURE_2D);
-  */
   /*
   //  Copy entire screen
   for (int i = 0; i < N; i++)
@@ -455,7 +456,7 @@ void display(GLFWwindow* window)
     //  Input image is from the last framebuffer
     glBindTexture(GL_TEXTURE_2D, img[i % 2]);
     //  Redraw the screen
-    DrawCanvas(shader[mode]);
+    DrawCanvas(shader[mode], img[i % 2]);
   }
   */
   //  Disable textures and shaders
