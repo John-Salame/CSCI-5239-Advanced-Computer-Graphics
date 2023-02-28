@@ -4,6 +4,7 @@
 
 //  Icosahedron data stored in VBO
 static unsigned int vbo=0;
+static unsigned int vao=0;
 static const int n      = 60;                //  Number of vertexes
 static const int stride = 11*sizeof(float);  //  Stride (bytes)
 //  Vertex coordinates, normals, textures and colors
@@ -71,6 +72,44 @@ static const float data[] =
  0.724, 0.526,-0.447,  0.940, 0.000,-0.179, 1.0,0.0, 0,1,1,
  0.724,-0.526,-0.447,  0.940, 0.000,-0.179, 0.5,1.0, 0,1,1,
 };
+
+// Addition for GL4, unlit, untextured
+void SimpleIcosahedron(unsigned int shader) {
+  //  Initialize VBO on first use
+  if (!vbo)
+  {
+      //  Get buffer name
+      glGenBuffers(1, &vbo);
+      //  Bind VBO
+      glBindBuffer(GL_ARRAY_BUFFER, vbo);
+      //  Copy icosahedron to VBO
+      glBufferData(GL_ARRAY_BUFFER, sizeof(data), data, GL_STATIC_DRAW);
+  }
+  //  On subsequanet calls, just bind VBO
+  else
+      glBindBuffer(GL_ARRAY_BUFFER, vbo);
+  // Initialize the VAO on first use
+  if (!vao) {
+      glGenVertexArrays(1, &vao);
+      glBindVertexArray(vao); // use the VAO
+      glBindBuffer(GL_ARRAY_BUFFER, vbo); // Bind VBO
+      int loc = glGetAttribLocation(shader, "Vertex");
+      glVertexAttribPointer(loc, 3, GL_FLOAT, 0, 44, (void*)0);
+      glEnableVertexAttribArray(loc);
+  }
+
+  //  Draw icosahedron
+  glDrawArrays(GL_TRIANGLES, 0, n);
+  //  Release VBO
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+  //  Release VAO
+  glBindVertexArray(0);
+  ErrCheck("simple icosahedron");
+}
+void CleanupIcosahedron() {
+    glDeleteBuffers(1, &vbo);
+    glDeleteBuffers(1, &vbo);
+}
 
 //
 //  Solid unit icosahedron

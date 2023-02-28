@@ -42,6 +42,8 @@ void Axes(float len);
 //  Transformations
 void Projection(float fov,float asp,float dim);
 void View(float th,float ph,float fov,float dim);
+void ProjectionGL4(float modelViewMat[], float projectionMat[], float fov, float asp, float dim);
+void ViewGL4(float modelViewMat[], float th, float ph, float fov, float dim);
 
 //  Enable lighting
 void SetColor(float R,float G,float B);
@@ -64,6 +66,8 @@ int  CreateShaderProgAttr(char* VertFile,char* FragFile,char* Name[]);
 int  CreateShaderProgGeom(const char* vert,const char* geom,const char* frag);
 
 //  Basic objects
+void CleanupIcosahedron();
+void SimpleIcosahedron(unsigned int shader);
 void SolidCube();
 void SolidSphere(int n);
 void SolidCylinder(int n);
