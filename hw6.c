@@ -1,7 +1,7 @@
 /*
  * John Salame
  * CSCI 5239 Advanced Computer Graphics
- * Homework 4
+ * Homework 6
  *
  *  Key bindings:
  *  m          Toggle shader
@@ -197,37 +197,73 @@ void display(GLFWwindow* window)
   ErrCheck("before base plate");
   DrawBasePlate(shader[mode], grassTexture);
 
-  /*
+  
   // Set up the fireflies
   GLfloat firefly1[4] = { 1.0, 1.0, 2.0, 1.0 };
   GLfloat firefly2[4] = { -1.0, 1.0, 1.0, 1.0 };
   GLfloat firefly3[4] = { 0.0, 1.0, -2.0, 1.0 };
   GLfloat firefly4[4] = { 0.5, 0.5, 0.0, 1.0 };
   // add a bit of noise
+  
   for (int i = 1; i < 3; i++) {
-    firefly1[i] += 0.1 * (rand() % 5 - 2);
-    firefly2[i] += 0.1 * (rand() % 5 - 2);
-    firefly3[i] += 0.1 * (rand() % 5 - 2);
-    firefly4[i] += 0.1 * (rand() % 5 - 2);
+    firefly1[i] += 0.05 * (rand() % 5 - 2);
+    firefly2[i] += 0.05 * (rand() % 5 - 2);
+    firefly3[i] += 0.05 * (rand() % 5 - 2);
+    firefly4[i] += 0.05 * (rand() % 5 - 2);
   }
+  
   // draw the fireflies
   float fireflyModelViewMat[16];
   mat4copy(fireflyModelViewMat, modelViewMat); // store the current modelViewMatrix so we can place the fireflies in the scene and remember their positions for later
+  glUseProgram(shader[0]);
+  PassMatricesToShader(shader[0], viewMat, modelViewMat, projectionMat);
+  
+  // firefly 1
   glUseProgram(shader[0]); // draw fireflies with the simplest shader
-  Sphere(firefly1[0], firefly1[1], firefly1[2], 0.1, 0, 8, 0);
-  Sphere(firefly2[0], firefly2[1], firefly2[2], 0.1, 0, 8, 0);
-  Sphere(firefly3[0], firefly3[1], firefly3[2], 0.1, 0, 8, 0);
-  Sphere(firefly4[0], firefly4[1], firefly4[2], 0.1, 0, 8, 0);
+  mat4copy(modelView1, modelViewMat); // replacement for glPushMatrix()
+  mat4translate(modelViewMat, firefly1[0], firefly1[1], firefly1[2]);
+  mat4scale(modelViewMat, 0.2, 0.2, 0.2);
+  SimpleIcosahedron(shader[0]); // represents a point light
+  mat4copy(modelViewMat, modelView1); // replacement for glPopMatrix()
+  
+  // firefly 2
+  mat4copy(modelView1, modelViewMat); // replacement for glPushMatrix()
+  mat4translate(modelViewMat, firefly2[0], firefly2[1], firefly2[2]);
+  mat4scale(modelViewMat, 0.2, 0.2, 0.2);
+  SimpleIcosahedron(shader[0]); // represents a point light
+  mat4copy(modelViewMat, modelView1); // replacement for glPopMatrix()
+
+  // firefly 3
+  mat4copy(modelView1, modelViewMat); // replacement for glPushMatrix()
+  mat4translate(modelViewMat, firefly3[0], firefly3[1], firefly3[2]);
+  mat4scale(modelViewMat, 0.2, 0.2, 0.2);
+  SimpleIcosahedron(shader[0]); // represents a point light
+  mat4copy(modelViewMat, modelView1); // replacement for glPopMatrix()
+
+  // firefly 4
+  mat4copy(modelView1, modelViewMat); // replacement for glPushMatrix()
+  mat4translate(modelViewMat, firefly4[0], firefly4[1], firefly4[2]);
+  mat4scale(modelViewMat, 0.2, 0.2, 0.2);
+  SimpleIcosahedron(shader[0]); // represents a point light
+  mat4copy(modelViewMat, modelView1); // replacement for glPopMatrix()
+  ErrCheck("fireflies draw");
+
   // use the firefly shader
-  mode = 1;
   glUseProgram(shader[mode]);
-  // pass the position of the fireflies
-  glLightfv(GL_LIGHT0, GL_POSITION, firefly1);
-  glLightfv(GL_LIGHT1, GL_POSITION, firefly2);
-  glLightfv(GL_LIGHT2, GL_POSITION, firefly3);
-  glLightfv(GL_LIGHT3, GL_POSITION, firefly4);
-  ErrCheck("fireflies");
-  */
+  mat4copy(fireflyModelViewMat, modelViewMat); // store the current modelViewMatrix so we can place the fireflies in the scene and remember their positions for later
+  // pass the position of the fireflies for lighting purposes
+  id = glGetUniformLocation(shader[mode], "fireflyModelView");
+  glUniformMatrix4fv(id, 1, 0, fireflyModelViewMat);
+  id = glGetUniformLocation(shader[mode], "firefly1");
+  glUniform4fv(id, 1, firefly1);
+  id = glGetUniformLocation(shader[mode], "firefly2");
+  glUniform4fv(id, 1, firefly2);
+  id = glGetUniformLocation(shader[mode], "firefly3");
+  glUniform4fv(id, 1, firefly3);
+  id = glGetUniformLocation(shader[mode], "firefly4");
+  glUniform4fv(id, 1, firefly4);
+  ErrCheck("fireflies lighting");
+  
 
   // make a lawn of 6 by 10 blades of grass per patch. Without scaling, a patch takes up a [-1, 1] area.
   // place the blades 0.3 apart horizontally and 0.2 apart along z
@@ -393,7 +429,7 @@ void reshape(GLFWwindow* window,int width,int height)
 int main(int argc,char* argv[])
 {
   //  Initialize GLFW
-  GLFWwindow* window = InitWindow("John Salame HW 3 - Performance",0,600,600,&reshape,&key);
+  GLFWwindow* window = InitWindow("John Salame HW 6 - Image Processing",0,600,600,&reshape,&key);
 
   //  Load shader
   shader[0] = CreateShaderProg("simple.vert", "simple.frag");
