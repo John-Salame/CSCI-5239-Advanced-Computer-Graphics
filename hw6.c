@@ -122,13 +122,14 @@ void DrawCanvas(unsigned int shader) {
     glBindVertexArray(canvasVao); // use the VAO
     glBindBuffer(GL_ARRAY_BUFFER, canvasVbo); // Bind VBO
     int loc = glGetAttribLocation(shader, "Vertex");
-    glVertexAttribPointer(loc, 3, GL_FLOAT, 0, 16, (void*)0);
+    glVertexAttribPointer(loc, 3, GL_FLOAT, 0, 20, (void*)0);
     glEnableVertexAttribArray(loc);
     loc = glGetAttribLocation(shader, "Texture");
-    glVertexAttribPointer(loc, 2, GL_FLOAT, 0, 16, (void*)12);
+    glVertexAttribPointer(loc, 2, GL_FLOAT, 0, 20, (void*)12);
     glEnableVertexAttribArray(loc);
   }
 
+  glBindVertexArray(canvasVao); // use the VAO
   //  Draw canvas rectangle
   glDrawArrays(GL_TRIANGLES, 0, 6);
   //  Release VBO
@@ -272,14 +273,6 @@ void display(GLFWwindow* window)
   GLfloat firefly2[4] = { -1.0, 1.0, 1.0, 1.0 };
   GLfloat firefly3[4] = { 0.0, 1.0, -2.0, 1.0 };
   GLfloat firefly4[4] = { 0.5, 0.5, 0.0, 1.0 };
-  // add a bit of noise
-  
-  for (int i = 1; i < 3; i++) {
-    firefly1[i] += 0.05 * (rand() % 5 - 2);
-    firefly2[i] += 0.05 * (rand() % 5 - 2);
-    firefly3[i] += 0.05 * (rand() % 5 - 2);
-    firefly4[i] += 0.05 * (rand() % 5 - 2);
-  }
   
   // draw the fireflies
   float fireflyModelViewMat[16];
@@ -291,28 +284,32 @@ void display(GLFWwindow* window)
   glUseProgram(simpleShader); // draw fireflies with the simplest shader
   mat4copy(modelView1, modelViewMat); // replacement for glPushMatrix()
   mat4translate(modelViewMat, firefly1[0], firefly1[1], firefly1[2]);
-  mat4scale(modelViewMat, 0.2, 0.2, 0.2);
+  mat4scale(modelViewMat, 0.05, 0.05, 0.05);
+  PassMatricesToShader(simpleShader, viewMat, modelViewMat, projectionMat);
   SimpleIcosahedron(simpleShader); // represents a point light
   mat4copy(modelViewMat, modelView1); // replacement for glPopMatrix()
   
   // firefly 2
   mat4copy(modelView1, modelViewMat); // replacement for glPushMatrix()
   mat4translate(modelViewMat, firefly2[0], firefly2[1], firefly2[2]);
-  mat4scale(modelViewMat, 0.2, 0.2, 0.2);
+  mat4scale(modelViewMat, 0.05, 0.05, 0.05);
+  PassMatricesToShader(simpleShader, viewMat, modelViewMat, projectionMat);
   SimpleIcosahedron(simpleShader); // represents a point light
   mat4copy(modelViewMat, modelView1); // replacement for glPopMatrix()
 
   // firefly 3
   mat4copy(modelView1, modelViewMat); // replacement for glPushMatrix()
   mat4translate(modelViewMat, firefly3[0], firefly3[1], firefly3[2]);
-  mat4scale(modelViewMat, 0.2, 0.2, 0.2);
+  mat4scale(modelViewMat, 0.05, 0.05, 0.05);
+  PassMatricesToShader(simpleShader, viewMat, modelViewMat, projectionMat);
   SimpleIcosahedron(simpleShader); // represents a point light
   mat4copy(modelViewMat, modelView1); // replacement for glPopMatrix()
 
   // firefly 4
   mat4copy(modelView1, modelViewMat); // replacement for glPushMatrix()
   mat4translate(modelViewMat, firefly4[0], firefly4[1], firefly4[2]);
-  mat4scale(modelViewMat, 0.2, 0.2, 0.2);
+  mat4scale(modelViewMat, 0.05, 0.05, 0.05);
+  PassMatricesToShader(simpleShader, viewMat, modelViewMat, projectionMat);
   SimpleIcosahedron(simpleShader); // represents a point light
   mat4copy(modelViewMat, modelView1); // replacement for glPopMatrix()
   ErrCheck("fireflies draw");
@@ -320,6 +317,13 @@ void display(GLFWwindow* window)
   // use the firefly shader
   glUseProgram(fireflyShader);
   mat4copy(fireflyModelViewMat, modelViewMat); // store the current modelViewMatrix so we can place the fireflies in the scene and remember their positions for later
+  // add a bit of noise to the light
+  for (int i = 1; i < 3; i++) {
+      firefly1[i] += 0.05 * (rand() % 5 - 2);
+      firefly2[i] += 0.05 * (rand() % 5 - 2);
+      firefly3[i] += 0.05 * (rand() % 5 - 2);
+      firefly4[i] += 0.05 * (rand() % 5 - 2);
+  }
   // pass the position of the fireflies for lighting purposes
   id = glGetUniformLocation(fireflyShader, "fireflyModelView");
   glUniformMatrix4fv(id, 1, 0, fireflyModelViewMat);
@@ -401,6 +405,10 @@ void display(GLFWwindow* window)
   mat4copy(modelViewMat, modelView1); // replacement for glPopMatrix()
   PassMatricesToShader(fireflyShader, viewMat, modelViewMat, projectionMat);
 
+  glUseProgram(simpleShader);
+  PassMatricesToShader(simpleShader, viewMat, modelViewMat, projectionMat);
+  DrawCanvas(simpleShader);
+
   //  Release attribute arrays
   glBindVertexArray(0);
 
@@ -411,6 +419,7 @@ void display(GLFWwindow* window)
   // Axes(2);
 #endif
   
+  /*
   // POST-PROCESSING
   // select post-processing shader
   glUseProgram(shader[mode]);
@@ -443,6 +452,8 @@ void display(GLFWwindow* window)
   //  Disable textures and shaders
   glDisable(GL_TEXTURE_2D);
   glUseProgram(0);
+  */
+  
   
 #ifndef APPLE_GL4
   //  Display parameters

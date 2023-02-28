@@ -99,6 +99,7 @@ void SimpleIcosahedron(unsigned int shader) {
   }
 
   //  Draw icosahedron
+  glBindVertexArray(vao); // use VAO
   glDrawArrays(GL_TRIANGLES, 0, n);
   //  Release VBO
   glBindBuffer(GL_ARRAY_BUFFER, 0);
