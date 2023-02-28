@@ -1,21 +1,16 @@
-# Homework 2 - Procedural Textures
+# Homework 6 - Image Processing
 John Salame
 CSCI 5239 Spring 2023
 
 ## Time taken
-Approximately 10 hours.
+4 hours.
+I first tried to get it workin in OpenGL 4, then in OpenGL 2. In both cases, I was unable to get it to render. I got a black screen when trying to draw the quad from the framebuffer texture.
 
 ### Description
-Uses OpenGL 4 to create a scene.  
-
-## Changes
-I changed the CSCI x239 library to have a "simple" icosahedron that I could use to place lights.
-The simple Icosahedron does not have color or textures, simply vertex position.
+Use framebuffers and renderbuffers to draw a post-processed scene.
 
 ### Limitations
-The lighitng is not exactly correct. It is using the same normals that a cube would use, rather than the proper skew of the blade of grass.  
-In homework 3, I had fireflies that acted as small point lights. I did not add those back in GL4.  
-The icosahedron tracking the point light also stopped showing up for some reason. I am going through the code but I cannot determine why and do not want to spend more time debugging.
+I still have not managed to debug the cause of the black screen. The text still shows up. I am not sure which line would render the framebuffer.
 
 ## Interaction
 Press P to toggle projection mode (orthogonal or perspective).  

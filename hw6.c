@@ -409,11 +409,6 @@ void display(GLFWwindow* window)
 #ifndef APPLE_GL4
   //  Display axes
   // Axes(2);
-  //  Display parameters
-  SetColor(1,1,1);
-  glWindowPos2i(5,5);
-  int fps = FramesPerSecond();
-  Print("Angle=%d,%d  Dim=%.1f Projection=%s Mode=%s Frames Per Second=%d",th,ph,dim,fov>0?"Perpective":"Orthogonal",text[mode],fps);
 #endif
   
   // POST-PROCESSING
@@ -449,6 +444,13 @@ void display(GLFWwindow* window)
   glDisable(GL_TEXTURE_2D);
   glUseProgram(0);
   
+#ifndef APPLE_GL4
+  //  Display parameters
+  SetColor(1, 1, 1);
+  glWindowPos2i(5, 5);
+  int fps = FramesPerSecond();
+  Print("Angle=%d,%d  Dim=%.1f Projection=%s Mode=%s Frames Per Second=%d", th, ph, dim, fov > 0 ? "Perpective" : "Orthogonal", text[mode], fps);
+#endif
 
   //  Render the scene and make it visible
   ErrCheck("display");
