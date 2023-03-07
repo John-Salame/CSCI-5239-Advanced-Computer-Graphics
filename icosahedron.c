@@ -98,6 +98,7 @@ void SimpleIcosahedron(unsigned int shader) {
       glEnableVertexAttribArray(loc);
   }
 
+  glBindVertexArray(vao);
   //  Draw icosahedron
   glBindVertexArray(vao); // use VAO
   glDrawArrays(GL_TRIANGLES, 0, n);

@@ -1,6 +1,7 @@
 // John Salame
 // Light objects using fireflies as point lights with attenuation and range
-// Lighting does not account for normals
+// Lighting from fireflies does not account for normals
+// The deceptively named shader is actually used for grass.
 #version 400 core
 
 uniform mat4 ViewMatrix;
@@ -22,6 +23,8 @@ uniform vec4 firefly1;
 uniform vec4 firefly2;
 uniform vec4 firefly3;
 uniform vec4 firefly4;
+
+uniform sampler3D grassHeights;
 
 //  Vertex attributes (input)
 in vec4 Vertex;
@@ -77,7 +80,9 @@ vec4 phong()
 }
 
 void main() {
+  // calculate where the vertex would normally be
   vec4 pos = ModelViewMatrix * Vertex;
+  // grassHeights[i] = 0.1 * ((rand() % 5) + 8); // range of heights is [0.8, 1.2]
   vec4 color = phong();
   // color grass more yellow if close to a firefly
   color += applyFirefly(pos, firefly1);

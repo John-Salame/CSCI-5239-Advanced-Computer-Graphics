@@ -1,4 +1,4 @@
-# Homework 6 - Image Processing
+# Homework 7 - Stored Textures
 John Salame
 CSCI 5239 Spring 2023
 
@@ -21,7 +21,6 @@ Use arrow keys to make the camera orbit the scene.
 
 ### Key bindings
   0          Reset the view
-  I          Toggle image post-processing
   p          Change projection mode
   M          Change shader mode
   arrows     Change view angle
