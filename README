@@ -3,12 +3,11 @@ John Salame
 CSCI 5239 Spring 2023
 
 ## Time taken
-7 hours.
-I first tried to get it workin in OpenGL 4, then in OpenGL 2. In both cases, I was unable to get it to render. I got a black screen when trying to draw the quad from the framebuffer texture.
-Issue may be with the viewport, projection, or Z-Buffer.
+1 - 1.5 hours
 
 ### Description
-Use framebuffers and renderbuffers to draw a post-processed scene.
+Use noise to add randomization to the heights of the grass.
+Previously I had done my randomization in the main function, but now it is done using the noise texture "grassHeights" in firefly1.vert.
 
 ### Limitations
 I still have not managed to debug the cause of the black screen. The text still shows up. I am not sure which line would render the framebuffer.
@@ -16,13 +15,14 @@ I still have not managed to debug the cause of the black screen. The text still 
 ## Interaction
 Press P to toggle projection mode (orthogonal or perspective).  
 Press the nubmer 0 to re-center the object.  
-Use arrow keys to make the camera orbit the scene.
+Use arrow keys to make the camera orbit the scene.  
+Press +/- to add or remove patches of grass.  
+Press PG UP / PG DOWN or the square brackets to zoom in or out.
 
 
 ### Key bindings
   0          Reset the view
   p          Change projection mode
-  M          Change shader mode
   arrows     Change view angle
   PgDn/PgUp  Zoom in and out
   ] and [    Zoom in and out

@@ -259,6 +259,11 @@ void display(GLFWwindow* window)
   glUniform4fv(id, 1, specular);
   id = glGetUniformLocation(fireflyShader, "Position");
   glUniform4fv(id, 1, position);
+  // Set texture units for samplers
+  id = glGetUniformLocation(fireflyShader, "tex");
+  glUniform1i(id, 0); // texture unit 0
+  id = glGetUniformLocation(fireflyShader, "grassHeights");
+  glUniform1i(id, 1); // texture unit 1 (noise)
 
   // draw the base plate
   PassMatricesToShader(fireflyShader, viewMat, modelViewMat, projectionMat);
@@ -360,7 +365,8 @@ void display(GLFWwindow* window)
     printf("Allocating grass VBO of size %d\n", grassVboSize);
     grassDataMain = malloc(grassVboSize);
     copyGrassData(grassDataMain, numBlades);
-
+    /*
+    // adjust grass heights from main program
     int grassVertices = getNumVerticesPerGrass();
     float* seek = grassDataMain + 1; // start at the first y value
     for (int i = 0; i < numBlades; i++) {
@@ -369,6 +375,7 @@ void display(GLFWwindow* window)
         seek += 13; // skip 13 floats since that is how many attributes exist per vertex
       }
     }
+    */
     InitGrassVBO(grassDataMain, grassVboSize, &grassVbo);
     InitGrassVAO(fireflyShader, &grassVbo, &grassVao);
     ErrCheck("grass main");
