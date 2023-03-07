@@ -3,8 +3,9 @@ John Salame
 CSCI 5239 Spring 2023
 
 ## Time taken
-4 hours.
+7 hours.
 I first tried to get it workin in OpenGL 4, then in OpenGL 2. In both cases, I was unable to get it to render. I got a black screen when trying to draw the quad from the framebuffer texture.
+Issue may be with the viewport, projection, or Z-Buffer.
 
 ### Description
 Use framebuffers and renderbuffers to draw a post-processed scene.
@@ -20,7 +21,9 @@ Use arrow keys to make the camera orbit the scene.
 
 ### Key bindings
   0          Reset the view
+  I          Toggle image post-processing
   p          Change projection mode
+  M          Change shader mode
   arrows     Change view angle
   PgDn/PgUp  Zoom in and out
   ] and [    Zoom in and out

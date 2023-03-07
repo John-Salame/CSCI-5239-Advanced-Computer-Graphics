@@ -58,6 +58,7 @@ unsigned int depthbuf = 0;  //  Depth buffer
 unsigned int img[2];      //  Image textures
 unsigned int framebuf[2]; //  Frame buffers
 int N = 3; // num passes
+int doPostProcessing = 1; // true
 
 unsigned int canvasVbo = 0;
 unsigned int canvasVao = 0;
@@ -138,6 +139,8 @@ void DrawCanvas(unsigned int shader, unsigned int texture) {
   glBindBuffer(GL_ARRAY_BUFFER, 0);
   //  Release VAO
   glBindVertexArray(0);
+  // Reset texture
+  glBindTexture(GL_TEXTURE_2D, blankTexture);
   ErrCheck("draw canvas");
 }
 
@@ -210,8 +213,14 @@ void ResetView() {
 //
 void display(GLFWwindow* window)
 {
-  //  Send all output to frame buffer 0
-  // glBindFramebuffer(GL_FRAMEBUFFER, framebuf[0]); // from example 8 - image processing
+  if(doPostProcessing) {
+    //  Send all output to frame buffer 0
+    glBindFramebuffer(GL_FRAMEBUFFER, framebuf[0]); // from example 8 - image processing
+  }
+  else {
+    //  Switch back to regular display buffer
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  }
   //  Erase the window and the depth buffer
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   //  Enable Z-buffering in OpenGL
@@ -390,13 +399,11 @@ void display(GLFWwindow* window)
   mat4copy(modelView1, modelViewMat); // replacement for glPushMatrix()
   mat4translate(modelViewMat, 0.0, 0.0, -numPatches); // start at the back row
   for(int i = 0; i < 10*numPatches; i++) {
-    // double* rowptr = grassHeights + i*6*numPatches; // add the current row * the length of the rows
-    mat4copy(modelView2, modelViewMat);
+    mat4copy(modelView2, modelViewMat); // push matrix
     mat4translate(modelViewMat, -numPatches, 0.0, 0.0); // start of row (left side)
     // travserse the row
     for (int j = 0; j < 6*numPatches; j++) {
       PassMatricesToShader(fireflyShader, viewMat, modelViewMat, projectionMat);
-      // bladeOfGrass(rowptr[j]);
       glDrawArrays(GL_TRIANGLES, drawStart, grassVertices);
       mat4translate(modelViewMat, 0.30, 0.0, 0.0);
       drawStart += grassVertices;
@@ -411,10 +418,14 @@ void display(GLFWwindow* window)
   glBindVertexArray(0);
 
   /*
+  //  Switch back to regular display buffer
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // this solved the black screen
   int shaderNow = textureShader;
+  unsigned int texture = img[0];
   glUseProgram(shaderNow);
   PassMatricesToShader(shaderNow, viewMat, modelViewMat, projectionMat);
-  DrawCanvas(shaderNow, grassTexture);
+  DrawCanvas(shaderNow, texture);
   */
 
   //  Revert to fixed pipeline
@@ -424,41 +435,69 @@ void display(GLFWwindow* window)
   // Axes(2);
 #endif
 
-  // POST-PROCESSING
-  glDisable(GL_CULL_FACE);
-  // select post-processing shader
-  unsigned int imageShader = shader[mode];
-  glUseProgram(shader[mode]);
-  glfwGetWindowSize(window, &width, &height);
-  id = glGetUniformLocation(imageShader, "dX");
-  glUniform1f(id, 1.0 / width);
-  id = glGetUniformLocation(imageShader, "dY");
-  glUniform1f(id, 1.0 / height);
-  //  Identity projection (allow the canvas to cover the whole screen)
-  mat4identity(projectionMat);
-  mat4identity(viewMat);
-  mat4identity(modelViewMat);
-  PassMatricesToShader(imageShader, viewMat, modelViewMat, projectionMat);
-  // DrawCanvas(imageShader, img[0]);
-  DrawCanvas(imageShader, grassTexture);
-  //  Disable depth test & Enable textures
-  glDisable(GL_DEPTH_TEST);
-  glEnable(GL_TEXTURE_2D);
-  /*
-  //  Copy entire screen
-  for (int i = 0; i < N; i++)
-  {
-    //  Output to alternate framebuffers
-    //  Final output is to screen
-    glBindFramebuffer(GL_FRAMEBUFFER, i == N - 1 ? 0 : framebuf[(i + 1) % 2]);
-    //  Clear the screen
-    glClear(GL_COLOR_BUFFER_BIT);
-    //  Input image is from the last framebuffer
-    glBindTexture(GL_TEXTURE_2D, img[i % 2]);
-    //  Redraw the screen
-    DrawCanvas(shader[mode], img[i % 2]);
+  if (doPostProcessing) {
+    // POST-PROCESSING
+    glDisable(GL_CULL_FACE);
+    // select post-processing shader
+    unsigned int imageShader = shader[mode];
+    glUseProgram(imageShader);
+    glfwGetWindowSize(window, &width, &height);
+    id = glGetUniformLocation(imageShader, "dX");
+    glUniform1f(id, 1.0 / width);
+    id = glGetUniformLocation(imageShader, "dY");
+    glUniform1f(id, 1.0 / height);
+    //  Identity projection (allow the canvas to cover the whole screen)
+    mat4identity(projectionMat);
+    mat4identity(viewMat);
+    mat4identity(modelViewMat);
+    // ProjectionGL4(modelViewMat, projectionMat, fov, asp, dim);
+    PassMatricesToShader(imageShader, viewMat, modelViewMat, projectionMat);
+    //  Identity projection (for OpenGL 2)
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    //  Disable depth test & Enable textures
+    glDisable(GL_DEPTH_TEST);
+    glEnable(GL_TEXTURE_2D);
+    /*
+    // Use OpenGL 2 to render
+    for (int i = 0; i < N; i++)
+    {
+        //  Output to alternate framebuffers
+        //  Final output is to screen
+        glBindFramebuffer(GL_FRAMEBUFFER, i == N - 1 ? 0 : framebuf[(i + 1) % 2]);
+        //  Clear the screen
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        //  Input image is from the last framebuffer
+        glBindTexture(GL_TEXTURE_2D, img[i % 2]);
+        //  Redraw the screen
+        glBegin(GL_QUADS);
+        glTexCoord2f(0, 0); glVertex2f(-1, -1);
+        glTexCoord2f(0, 1); glVertex2f(-1, +1);
+        glTexCoord2f(1, 1); glVertex2f(+1, +1);
+        glTexCoord2f(1, 0); glVertex2f(+1, -1);
+        glEnd();
+    }
+    */
+    //  Copy entire screen
+    // Use OpenGL 4 to render
+    for (int i = 0; i < N; i++)
+    {
+      //  Output to alternate framebuffers
+      //  Final output is to screen
+      glBindFramebuffer(GL_FRAMEBUFFER, i == N - 1 ? 0 : framebuf[(i + 1) % 2]);
+      //  Clear the screen
+      glClear(GL_COLOR_BUFFER_BIT);
+      if (i == 0) {
+        glClear(GL_DEPTH_BUFFER_BIT);
+      }
+      //  Input image is from the last framebuffer
+      glBindTexture(GL_TEXTURE_2D, img[i % 2]);
+      //  Redraw the screen
+      DrawCanvas(imageShader, img[i % 2]);
+    }
   }
-  */
   //  Disable textures and shaders
   glDisable(GL_TEXTURE_2D);
   glEnable(GL_CULL_FACE);
@@ -470,7 +509,7 @@ void display(GLFWwindow* window)
   SetColor(1, 1, 1);
   glWindowPos2i(5, 5);
   int fps = FramesPerSecond();
-  Print("Angle=%d,%d  Dim=%.1f Projection=%s Mode=%s Frames Per Second=%d", th, ph, dim, fov > 0 ? "Perpective" : "Orthogonal", text[mode], fps);
+  Print("Angle=%d,%d  Dim=%.1f Projection=%s Mode=%s Post-Processing=%d Frames Per Second=%d", th, ph, dim, fov > 0 ? "Perpective" : "Orthogonal", text[mode], doPostProcessing, fps);
 #endif
 
   //  Render the scene and make it visible
@@ -495,14 +534,16 @@ void key(GLFWwindow* window,int key,int scancode,int action,int mods)
        ResetView();
    }
    //  Switch shaders
-   else if (key==GLFW_KEY_M)
-      mode = (mode + 1) % NUM_SHADERS;
+   else if (key == GLFW_KEY_M)
+       mode = (mode + 1) % NUM_SHADERS;
    //  Switch objects
-   else if (key==GLFW_KEY_O)
-      obj = 1-obj;
+   else if (key == GLFW_KEY_O)
+       obj = 1 - obj;
    //  Switch between perspective/orthogonal
-   else if (key==GLFW_KEY_P)
-      fov = fov ? 0 : 57;
+   else if (key == GLFW_KEY_P)
+       fov = fov ? 0 : 57;
+   else if (key == GLFW_KEY_I)
+       doPostProcessing = !doPostProcessing;
    //  Increase/decrease asimuth
    else if (key==GLFW_KEY_RIGHT)
       th += 5;
@@ -553,19 +594,23 @@ void reshape(GLFWwindow* window,int width,int height)
    //  Typically the same size as the screen (W,H) but can be larger or smaller
    //
    //  Delete old frame buffer, depth buffer and texture
-   if (depthbuf)
-   {
-       glDeleteRenderbuffers(1, &depthbuf);
-       glDeleteTextures(2, img);
-       glDeleteFramebuffers(2, framebuf);
-   }
-   //  Allocate two textures, two frame buffer objects and a depth buffer
-   glGenFramebuffers(2, framebuf);
-   glGenTextures(2, img);
-   glGenRenderbuffers(1, &depthbuf);
-   //  Allocate and size texture
-   for (int k = 0; k < 2; k++)
-   {
+   if(doPostProcessing) {
+     if (depthbuf)
+     {
+         glDeleteRenderbuffers(1, &depthbuf);
+         glDeleteTextures(2, img);
+         glDeleteFramebuffers(2, framebuf);
+     }
+     //  Allocate two textures, two frame buffer objects and a depth buffer
+     glGenFramebuffers(2, framebuf);
+     glGenTextures(2, img);
+     glGenRenderbuffers(1, &depthbuf);
+     printf("Framebuffer names %d %d\n", framebuf[0], framebuf[1]);
+     printf("Texture names %d %d\n", img[0], img[1]);
+     printf("Render buffer name %d\n", depthbuf);
+     //  Allocate and size texture
+     for (int k = 0; k < 2; k++)
+     {
        glBindTexture(GL_TEXTURE_2D, img[k]);
        glTexImage2D(GL_TEXTURE_2D, 0, 3, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -582,10 +627,12 @@ void reshape(GLFWwindow* window,int width,int height)
            glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, width, height);
            glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthbuf);
        }
+     }
+     ErrCheck("Framebuffer");
    }
    //  Switch back to regular display buffer
    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-   ErrCheck("Framebuffer");
+   ErrCheck("Reshape");
    // End of code from Example 8
 }
 
@@ -604,9 +651,12 @@ int main(int argc,char* argv[])
   shader[0] = CreateShaderProg("texture.vert", "blur.frag"); // filter
   shader[1] = CreateShaderProg("texture.vert", "prewitt.frag"); // filter
   //  Load textures
+  glActiveTexture(GL_TEXTURE0);
   tex = LoadTexBMP("pi.bmp");
   grassTexture = LoadTexBMP("grass.bmp");
   blankTexture = LoadTexBMP("blank.bmp");
+  printf("Grass texture name %d\n", grassTexture);
+  printf("Blank texture name %d\n", blankTexture);
 
   //  Event loop
   ErrCheck("init");
