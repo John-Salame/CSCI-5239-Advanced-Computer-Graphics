@@ -1,26 +1,23 @@
-# Homework 2 - Procedural Textures
+# Homework 7 - Stored Textures
 John Salame
 CSCI 5239 Spring 2023
 
 ## Time taken
-Approximately 10 hours.
+1 - 1.5 hours
 
 ### Description
-Uses OpenGL 4 to create a scene.  
-
-## Changes
-I changed the CSCI x239 library to have a "simple" icosahedron that I could use to place lights.
-The simple Icosahedron does not have color or textures, simply vertex position.
+Use noise to add randomization to the heights of the grass.
+Previously I had done my randomization in the main function, but now it is done using the noise texture "grassHeights" in firefly1.vert.
 
 ### Limitations
-The lighitng is not exactly correct. It is using the same normals that a cube would use, rather than the proper skew of the blade of grass.  
-In homework 3, I had fireflies that acted as small point lights. I did not add those back in GL4.  
-The icosahedron tracking the point light also stopped showing up for some reason. I am going through the code but I cannot determine why and do not want to spend more time debugging.
+I still have not managed to debug the cause of the black screen. The text still shows up. I am not sure which line would render the framebuffer.
 
 ## Interaction
 Press P to toggle projection mode (orthogonal or perspective).  
 Press the nubmer 0 to re-center the object.  
-Use arrow keys to make the camera orbit the scene.
+Use arrow keys to make the camera orbit the scene.  
+Press +/- to add or remove patches of grass.  
+Press PG UP / PG DOWN or the square brackets to zoom in or out.
 
 
 ### Key bindings
