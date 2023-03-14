@@ -1,7 +1,7 @@
 /*
  * John Salame
  * CSCI 5239 Advanced Computer Graphics
- * Homework 6
+ * Homework 8
  *
  *  Key bindings:
  *  m          Toggle shader
@@ -20,11 +20,11 @@ int fov=57;    //  Field of view (for perspective)
 int tex=0;     //  Texture
 int obj=1;     //  Object
 #define NUM_SHADERS 2
-int shader[NUM_SHADERS];  //  Shader
+// int shader[NUM_SHADERS];  //  Shader
 float asp=1;   //  Aspect ratio
 float dim=3;   //  Size of world
 float lTh = 0.0; // theta for calculating light position
-const char* text[NUM_SHADERS] = {"Blur Filter","Prewitt Filter"};
+// const char* text[NUM_SHADERS] = {"Blur Filter","Prewitt Filter"};
 int width = 0;
 int height = 0;
 
@@ -271,73 +271,54 @@ void display(GLFWwindow* window)
   DrawBasePlate(fireflyShader, grassTexture);
 
   
-  // Set up the fireflies
-  GLfloat firefly1[4] = { 1.0, 1.0, 2.0, 1.0 };
-  GLfloat firefly2[4] = { -1.0, 1.0, 1.0, 1.0 };
-  GLfloat firefly3[4] = { 0.0, 1.0, -2.0, 1.0 };
-  GLfloat firefly4[4] = { 0.5, 0.5, 0.0, 1.0 };
-  
-  // draw the fireflies
+  // set up the fireflies
   float fireflyModelViewMat[16];
+  // hold the positions of four fireflies
+  float fireflyPositions[16] = 
+  { 1.0, 1.0, 2.0, 1.0 ,
+   -1.0, 1.0, 1.0, 1.0 ,
+   0.0, 1.0, -2.0, 1.0 ,
+   0.5, 0.5, 0.0, 1.0 };
   mat4copy(fireflyModelViewMat, modelViewMat); // store the current modelViewMatrix so we can place the fireflies in the scene and remember their positions for later
   glUseProgram(simpleShader);
-  PassMatricesToShader(simpleShader, viewMat, modelViewMat, projectionMat);
-  
-  // firefly 1
-  glUseProgram(simpleShader); // draw fireflies with the simplest shader
-  mat4copy(modelView1, modelViewMat); // replacement for glPushMatrix()
-  mat4translate(modelViewMat, firefly1[0], firefly1[1], firefly1[2]);
-  mat4scale(modelViewMat, 0.05, 0.05, 0.05);
-  PassMatricesToShader(simpleShader, viewMat, modelViewMat, projectionMat);
-  SimpleIcosahedron(simpleShader); // represents a point light
-  mat4copy(modelViewMat, modelView1); // replacement for glPopMatrix()
-  
-  // firefly 2
-  mat4copy(modelView1, modelViewMat); // replacement for glPushMatrix()
-  mat4translate(modelViewMat, firefly2[0], firefly2[1], firefly2[2]);
-  mat4scale(modelViewMat, 0.05, 0.05, 0.05);
-  PassMatricesToShader(simpleShader, viewMat, modelViewMat, projectionMat);
-  SimpleIcosahedron(simpleShader); // represents a point light
-  mat4copy(modelViewMat, modelView1); // replacement for glPopMatrix()
 
-  // firefly 3
-  mat4copy(modelView1, modelViewMat); // replacement for glPushMatrix()
-  mat4translate(modelViewMat, firefly3[0], firefly3[1], firefly3[2]);
-  mat4scale(modelViewMat, 0.05, 0.05, 0.05);
-  PassMatricesToShader(simpleShader, viewMat, modelViewMat, projectionMat);
-  SimpleIcosahedron(simpleShader); // represents a point light
-  mat4copy(modelViewMat, modelView1); // replacement for glPopMatrix()
+  // make the fireflies move a bit in a cyclical way
+  for (int i = 0; i < 4; ++i) {
+      float x = fireflyPositions[4 * i + 0];
+      float y = fireflyPositions[4 * i + 1];
+      float phase = x - y; // make the fireflies a bit out of phase with each other in their motion
+      phase = x - phase * phase;
+      phase = fmin(2.0, abs(phase)); // don't have hyperactive fireflies
+      fireflyPositions[4 * i + 0] += 0.3 * Cos(phase * lTh) +-0.1 * fmod(x, 2);
+      fireflyPositions[4 * i + 1] += 0.05 * Cos(10*lTh) * Sin(20*lTh) + 0.2 * Cos(phase*lTh);
+      fireflyPositions[4 * i + 2] += 0.2*(0.5-Sin(phase*lTh));
+  }
+  // float position[] = { 3 * Cos(lTh), 1.0, 3 * Sin(lTh), 1.0 };
 
-  // firefly 4
-  mat4copy(modelView1, modelViewMat); // replacement for glPushMatrix()
-  mat4translate(modelViewMat, firefly4[0], firefly4[1], firefly4[2]);
-  mat4scale(modelViewMat, 0.05, 0.05, 0.05);
-  PassMatricesToShader(simpleShader, viewMat, modelViewMat, projectionMat);
-  SimpleIcosahedron(simpleShader); // represents a point light
-  mat4copy(modelViewMat, modelView1); // replacement for glPopMatrix()
+  // draw the fireflies
+  for (int i = 0; i < 4; ++i) {
+    mat4copy(modelView1, modelViewMat); // replacement for glPushMatrix()
+    mat4translate(modelViewMat, fireflyPositions[4 * i + 0], fireflyPositions[4 * i + 1], fireflyPositions[4 * i + 2]);
+    mat4scale(modelViewMat, 0.05, 0.05, 0.05);
+    PassMatricesToShader(simpleShader, viewMat, modelViewMat, projectionMat);
+    SimpleIcosahedron(simpleShader); // represents a point light
+    mat4copy(modelViewMat, modelView1); // replacement for glPopMatrix()
+  }
   ErrCheck("fireflies draw");
+  
 
-  // use the firefly shader
+  // use the firefly shader and draw grass lit by fireflies
   glUseProgram(fireflyShader);
   mat4copy(fireflyModelViewMat, modelViewMat); // store the current modelViewMatrix so we can place the fireflies in the scene and remember their positions for later
-  // add a bit of noise to the light
-  for (int i = 1; i < 3; i++) {
-      firefly1[i] += 0.05 * (rand() % 5 - 2);
-      firefly2[i] += 0.05 * (rand() % 5 - 2);
-      firefly3[i] += 0.05 * (rand() % 5 - 2);
-      firefly4[i] += 0.05 * (rand() % 5 - 2);
-  }
+  
   // pass the position of the fireflies for lighting purposes
   id = glGetUniformLocation(fireflyShader, "fireflyModelView");
   glUniformMatrix4fv(id, 1, 0, fireflyModelViewMat);
-  id = glGetUniformLocation(fireflyShader, "firefly1");
-  glUniform4fv(id, 1, firefly1);
-  id = glGetUniformLocation(fireflyShader, "firefly2");
-  glUniform4fv(id, 1, firefly2);
-  id = glGetUniformLocation(fireflyShader, "firefly3");
-  glUniform4fv(id, 1, firefly3);
-  id = glGetUniformLocation(fireflyShader, "firefly4");
-  glUniform4fv(id, 1, firefly4);
+  id = glGetUniformLocation(fireflyShader, "fireflies");
+  glUniform4fv(id, 4, fireflyPositions);
+  // lTh is a convenient variable that changes with time. I can use it to oscillate through a portion of the 3D noise map in order to make the fireflies quake.
+  id = glGetUniformLocation(fireflyShader, "t");
+  glUniform1f(id, (float) lTh);
   ErrCheck("fireflies lighting");
   
 
@@ -424,7 +405,8 @@ void display(GLFWwindow* window)
   SetColor(1, 1, 1);
   glWindowPos2i(5, 5);
   int fps = FramesPerSecond();
-  Print("Angle=%d,%d  Dim=%.1f Projection=%s Mode=%s Frames Per Second=%d", th, ph, dim, fov > 0 ? "Perpective" : "Orthogonal", text[mode], fps);
+  // Print("Angle=%d,%d  Dim=%.1f Projection=%s Mode=%s Frames Per Second=%d", th, ph, dim, fov > 0 ? "Perpective" : "Orthogonal", text[mode], fps);
+  Print("Angle=%d,%d  Dim=%.1f Projection=%s Frames Per Second=%d", th, ph, dim, fov > 0 ? "Perpective" : "Orthogonal", fps);
 #endif
 
   //  Render the scene and make it visible
@@ -510,14 +492,14 @@ void reshape(GLFWwindow* window,int width,int height)
 int main(int argc,char* argv[])
 {
   //  Initialize GLFW
-  GLFWwindow* window = InitWindow("John Salame HW 7 - Stored Textures",0,600,600,&reshape,&key);
+  GLFWwindow* window = InitWindow("John Salame HW 8 - Particle System",0,600,600,&reshape,&key);
 
   //  Load shader
   simpleShader = CreateShaderProg("simple.vert", "simple.frag");
   fireflyShader = CreateShaderProg("firefly1.vert", "texture.frag");
   textureShader = CreateShaderProg("texture.vert", "texture.frag");
-  shader[0] = CreateShaderProg("texture.vert", "blur.frag"); // filter
-  shader[1] = CreateShaderProg("texture.vert", "prewitt.frag"); // filter
+  // shader[0] = CreateShaderProg("texture.vert", "blur.frag"); // filter
+  // shader[1] = CreateShaderProg("texture.vert", "prewitt.frag"); // filter
   //  Load textures
   glActiveTexture(GL_TEXTURE0);
   tex = LoadTexBMP("pi.bmp");
