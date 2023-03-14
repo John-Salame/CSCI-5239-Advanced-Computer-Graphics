@@ -39,6 +39,7 @@ unsigned int grassVao = 0;
 unsigned int baseVbo = 0;
 unsigned int baseVao = 0;
 unsigned int grassTexture = 0;
+unsigned int starTexture = 0; // might be good for anything that twinkles
 unsigned int blankTexture = 0; // a single white pixel, used for untextured objects
 
 // OPENGL4 STUFF
@@ -52,6 +53,7 @@ float modelView2[16]; // temporary solution to glPushMatrix()
 unsigned int simpleShader = 0;
 unsigned int fireflyShader = 0;
 unsigned int textureShader = 0;
+unsigned int particleShader = 0;
 unsigned int canvasVbo = 0;
 unsigned int canvasVao = 0;
 
@@ -268,7 +270,7 @@ void display(GLFWwindow* window)
   // draw the base plate
   PassMatricesToShader(fireflyShader, viewMat, modelViewMat, projectionMat);
   ErrCheck("before base plate");
-  DrawBasePlate(fireflyShader, grassTexture);
+  DrawBasePlate(fireflyShader, starTexture);
 
   
   // set up the fireflies
@@ -280,7 +282,6 @@ void display(GLFWwindow* window)
    0.0, 1.0, -2.0, 1.0 ,
    0.5, 0.5, 0.0, 1.0 };
   mat4copy(fireflyModelViewMat, modelViewMat); // store the current modelViewMatrix so we can place the fireflies in the scene and remember their positions for later
-  glUseProgram(simpleShader);
 
   // make the fireflies move a bit in a cyclical way
   for (int i = 0; i < 4; ++i) {
@@ -293,19 +294,6 @@ void display(GLFWwindow* window)
       fireflyPositions[4 * i + 1] += 0.05 * Cos(10*lTh) * Sin(20*lTh) + 0.2 * Cos(phase*lTh);
       fireflyPositions[4 * i + 2] += 0.2*(0.5-Sin(phase*lTh));
   }
-  // float position[] = { 3 * Cos(lTh), 1.0, 3 * Sin(lTh), 1.0 };
-
-  // draw the fireflies
-  for (int i = 0; i < 4; ++i) {
-    mat4copy(modelView1, modelViewMat); // replacement for glPushMatrix()
-    mat4translate(modelViewMat, fireflyPositions[4 * i + 0], fireflyPositions[4 * i + 1], fireflyPositions[4 * i + 2]);
-    mat4scale(modelViewMat, 0.05, 0.05, 0.05);
-    PassMatricesToShader(simpleShader, viewMat, modelViewMat, projectionMat);
-    SimpleIcosahedron(simpleShader); // represents a point light
-    mat4copy(modelViewMat, modelView1); // replacement for glPopMatrix()
-  }
-  ErrCheck("fireflies draw");
-  
 
   // use the firefly shader and draw grass lit by fireflies
   glUseProgram(fireflyShader);
@@ -394,6 +382,58 @@ void display(GLFWwindow* window)
 
   //  Revert to fixed pipeline
   glUseProgram(0);
+
+
+  // PREPARE TO DRAW FIREFLIES -- transparent stuff is drawn last
+  // Example 16 is used as reference, and some code is borrowed.
+  unsigned int currentShader = particleShader;
+  glUseProgram(currentShader); // this should be a particle shader
+  //  Set particle size
+  glPointSize(25);
+  glActiveTexture(GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_2D, starTexture);
+  glEnable(GL_POINT_SPRITE);
+  glTexEnvi(GL_POINT_SPRITE, GL_COORD_REPLACE, GL_TRUE);
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+  glDepthMask(0); // disable z-buffer
+
+  // make the fireflies slightly yellow and transparent
+  float fireflyColors[16];
+  for (int i = 0; i < 4; ++i) {
+      fireflyColors[4 * i + 0] = 0.8;
+      fireflyColors[4 * i + 1] = 1.0; // greenish color
+      fireflyColors[4 * i + 2] = 0.4;
+      fireflyColors[4 * i + 3] = 0.6; // slightly transparent
+  }
+
+  // prepare vertex attributes
+  id = glGetUniformLocation(currentShader, "tex");
+  glUniform1i(id, 0); // texture unit 0
+  id = glGetAttribLocation(currentShader, "Vertex");
+  glVertexAttribPointer(id, 4, GL_FLOAT, 0, 16, fireflyPositions);
+  glEnableVertexAttribArray(id);
+  //  Point color array to local array Color
+  id = glGetAttribLocation(currentShader, "Color");
+  glVertexAttribPointer(id, 4, GL_FLOAT, 0, 16, fireflyColors);
+  glEnableVertexAttribArray(id);
+  ErrCheck("set up to draw firefly particles");
+
+  // draw the fireflies
+  PassMatricesToShader(currentShader, viewMat, modelViewMat, projectionMat);
+  glDrawArrays(GL_POINTS, 0, 4); // draw 4 fireflies
+
+  // undo firefly settings
+  glDisable(GL_POINT_SPRITE);
+  glDisable(GL_BLEND);
+  glDepthMask(1);
+  id = glGetAttribLocation(currentShader, "Vertex");
+  glDisableVertexAttribArray(id);
+  id = glGetAttribLocation(currentShader, "Color");
+  glDisableVertexAttribArray(id);
+  glBindTexture(GL_TEXTURE_2D, blankTexture);
+  ErrCheck("fireflies draw");
+
 #ifndef APPLE_GL4
   //  Display axes
   // Axes(2);
@@ -498,12 +538,14 @@ int main(int argc,char* argv[])
   simpleShader = CreateShaderProg("simple.vert", "simple.frag");
   fireflyShader = CreateShaderProg("firefly1.vert", "texture.frag");
   textureShader = CreateShaderProg("texture.vert", "texture.frag");
+  particleShader = CreateShaderProg("particle.vert", "particle.frag");
   // shader[0] = CreateShaderProg("texture.vert", "blur.frag"); // filter
   // shader[1] = CreateShaderProg("texture.vert", "prewitt.frag"); // filter
   //  Load textures
   glActiveTexture(GL_TEXTURE0);
   tex = LoadTexBMP("pi.bmp");
   grassTexture = LoadTexBMP("grass.bmp");
+  starTexture = LoadTexBMP("star.bmp");
   blankTexture = LoadTexBMP("blank.bmp");
   noiseTexture = CreateNoise3D(GL_TEXTURE1); // put noise in texture unit 1
 

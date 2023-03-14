@@ -3,12 +3,12 @@ John Salame
 CSCI 5239 Spring 2023
 
 ## Time taken
-2 hours
+4 hours
 
 ### Description
 I added some chaos to the motion of my fireflies. I replaced my individual shader variable per firefly with an array of firefly positions instead. This is much cleaner and more scalable.  
-This change will prepare me to add my particle effects. I may have 5-10 particles following the fireflies, spawning in some small sphere around them.  
-The grass doesn't look good, but that is not the focus, and I may improve it in a later assignment. My main focus will be on the fireflies and the particles they emit.
+My idea is to surround my fireflies with particle effects. However, in the interest of time, I will simply turn the fireflies into particle effects for this assignment. I may also improve the grass in future assignments, as it looks a bit awful now.  
+
 
 ### Limitations
 I still have not managed to debug the cause of the black screen. The text still shows up. I am not sure which line would render the framebuffer.

@@ -40,6 +40,7 @@ out vec2 Texcoord;
 vec4 applyFirefly(vec4 pos, vec4 firefly) {
   vec4 retColor = vec4(0.0);
   // add some noise as a function of time to firefly before calculating the position in model view coordinates.
+  // this creates flicker in the light.
   vec4 fireflyPos = fireflyModelView * (firefly + texture(grassHeights, firefly.xyz + vec3(t)));
   vec3 diff = pos.xyz - fireflyPos.xyz;
   float mag = dot(diff, diff);
