@@ -61,17 +61,17 @@ void ProjectionGL4(float modelViewMat[], float projectionMat[], float fov, float
   mat4identity(modelViewMat);
 }
 
-void ViewGL4(float modelViewMat[], float th, float ph, float fov, float dim) {
-    mat4identity(modelViewMat);
+void ViewGL4(float viewMat[], float th, float ph, float fov, float dim) {
+    mat4identity(viewMat);
     if (fov) {
       float Ex = -2 * dim * Sin(th) * Cos(ph);
       float Ey = +2 * dim * Sin(ph);
       float Ez = +2 * dim * Cos(th) * Cos(ph);
       gluLookAt(Ex, Ey, Ez, 0, 0, 0, 0, Cos(ph), 0);
-      mat4lookAt(modelViewMat, Ex, Ey, Ez, 0, 0, 0, 0, Cos(ph), 0);
+      mat4lookAt(viewMat, Ex, Ey, Ez, 0, 0, 0, 0, Cos(ph), 0);
     }
     else {
-        mat4rotate(modelViewMat, ph, 1, 0, 0);
-        mat4rotate(modelViewMat, th, 0, 1, 0);
+        mat4rotate(viewMat, ph, 1, 0, 0);
+        mat4rotate(viewMat, th, 0, 1, 0);
     }
 }

@@ -14,17 +14,17 @@
 #include <stdlib.h>
 #include "CSCIx239.h"
 #include "grass.h"
-int mode=0;    //  Shader
+int mode=1;    //  Shader
 int th=0,ph=0; //  View angles
 int fov=57;    //  Field of view (for perspective)
 int tex=0;     //  Texture
 int obj=1;     //  Object
-#define NUM_SHADERS 2
+#define NUM_SHADERS 3
 int shader[NUM_SHADERS];  //  Shader
 float asp=1;   //  Aspect ratio
 float dim=3;   //  Size of world
 float lTh = 0.0; // theta for calculating light position
-const char* text[NUM_SHADERS] = {"Blur Filter","Prewitt Filter"};
+const char* text[NUM_SHADERS] = {"No Filter", "Blur Filter","Prewitt Filter"};
 int width = 0;
 int height = 0;
 
@@ -236,7 +236,9 @@ void display(GLFWwindow* window)
   glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE); // mix colors
   */
 
-  //  Set view
+  // Set projection
+  ProjectionGL4(modelViewMat, projectionMat, fov, asp, dim);
+  // Set view
   ViewGL4(viewMat, th, ph, fov, dim);
   mat4copy(modelViewMat, viewMat);
 
@@ -434,52 +436,34 @@ void display(GLFWwindow* window)
   //  Display axes
   // Axes(2);
 #endif
-
+  
+  // POST-PROCESSING
   if (doPostProcessing) {
-    // POST-PROCESSING
+    int oldN = N;
+    // When using blur, multiple the number of iterations by 3
+    if (mode == 1) {
+      N *= 3;
+    }
     glDisable(GL_CULL_FACE);
     // select post-processing shader
     unsigned int imageShader = shader[mode];
     glUseProgram(imageShader);
-    glfwGetWindowSize(window, &width, &height);
-    id = glGetUniformLocation(imageShader, "dX");
-    glUniform1f(id, 1.0 / width);
-    id = glGetUniformLocation(imageShader, "dY");
-    glUniform1f(id, 1.0 / height);
+    if (mode) {
+      glfwGetWindowSize(window, &width, &height);
+      id = glGetUniformLocation(imageShader, "dX");
+      glUniform1f(id, 1.0 / width);
+      id = glGetUniformLocation(imageShader, "dY");
+      glUniform1f(id, 1.0 / height);
+    }
     //  Identity projection (allow the canvas to cover the whole screen)
     mat4identity(projectionMat);
     mat4identity(viewMat);
     mat4identity(modelViewMat);
     // ProjectionGL4(modelViewMat, projectionMat, fov, asp, dim);
     PassMatricesToShader(imageShader, viewMat, modelViewMat, projectionMat);
-    //  Identity projection (for OpenGL 2)
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
     //  Disable depth test & Enable textures
     glDisable(GL_DEPTH_TEST);
     glEnable(GL_TEXTURE_2D);
-    /*
-    // Use OpenGL 2 to render
-    for (int i = 0; i < N; i++)
-    {
-        //  Output to alternate framebuffers
-        //  Final output is to screen
-        glBindFramebuffer(GL_FRAMEBUFFER, i == N - 1 ? 0 : framebuf[(i + 1) % 2]);
-        //  Clear the screen
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        //  Input image is from the last framebuffer
-        glBindTexture(GL_TEXTURE_2D, img[i % 2]);
-        //  Redraw the screen
-        glBegin(GL_QUADS);
-        glTexCoord2f(0, 0); glVertex2f(-1, -1);
-        glTexCoord2f(0, 1); glVertex2f(-1, +1);
-        glTexCoord2f(1, 1); glVertex2f(+1, +1);
-        glTexCoord2f(1, 0); glVertex2f(+1, -1);
-        glEnd();
-    }
-    */
     //  Copy entire screen
     // Use OpenGL 4 to render
     for (int i = 0; i < N; i++)
@@ -489,14 +473,13 @@ void display(GLFWwindow* window)
       glBindFramebuffer(GL_FRAMEBUFFER, i == N - 1 ? 0 : framebuf[(i + 1) % 2]);
       //  Clear the screen
       glClear(GL_COLOR_BUFFER_BIT);
-      if (i == 0) {
+      if ((i+1) % 2 == 0) {
         glClear(GL_DEPTH_BUFFER_BIT);
       }
       //  Input image is from the last framebuffer
-      glBindTexture(GL_TEXTURE_2D, img[i % 2]);
-      //  Redraw the screen
       DrawCanvas(imageShader, img[i % 2]);
     }
+    N = oldN;
   }
   //  Disable textures and shaders
   glDisable(GL_TEXTURE_2D);
@@ -572,7 +555,7 @@ void key(GLFWwindow* window,int key,int scancode,int action,int mods)
    th %= 360;
    ph %= 360;
    //  Update projection
-   ProjectionGL4(modelViewMat, projectionMat, fov,asp,dim);
+   // ProjectionGL4(modelViewMat, projectionMat, fov,asp,dim);
 }
 
 //
@@ -587,7 +570,7 @@ void reshape(GLFWwindow* window,int width,int height)
    //  Set the viewport to the entire window
    glViewport(0,0, width,height);
    //  Set projection
-   ProjectionGL4(modelViewMat, projectionMat, fov,asp,dim);
+   // ProjectionGL4(modelViewMat, projectionMat, fov,asp,dim);
    // Taken from Example 8
    //
    //  Allocate a frame buffer
@@ -648,8 +631,9 @@ int main(int argc,char* argv[])
   simpleShader = CreateShaderProg("simple.vert", "simple.frag");
   fireflyShader = CreateShaderProg("firefly1.vert", "texture.frag");
   textureShader = CreateShaderProg("texture.vert", "texture.frag");
-  shader[0] = CreateShaderProg("texture.vert", "blur.frag"); // filter
-  shader[1] = CreateShaderProg("texture.vert", "prewitt.frag"); // filter
+  shader[0] = textureShader;
+  shader[1] = CreateShaderProg("texture.vert", "blur.frag"); // filter
+  shader[2] = CreateShaderProg("texture.vert", "prewitt.frag"); // filter
   //  Load textures
   glActiveTexture(GL_TEXTURE0);
   tex = LoadTexBMP("pi.bmp");

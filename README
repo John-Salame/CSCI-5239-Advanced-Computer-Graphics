@@ -3,17 +3,20 @@ John Salame
 CSCI 5239 Spring 2023
 
 ## Time taken
-7 hours.
+8-10 hours.
 I first tried to get it workin in OpenGL 4, then in OpenGL 2. In both cases, I was unable to get it to render. I got a black screen when trying to draw the quad from the framebuffer texture.
-Issue may be with the viewport, projection, or Z-Buffer.
+Issue may be with the viewport, projection, or Z-Buffer.  
+Eventually, I found out that the issue was me changing the projection matrix in the reshape function and in the "key" function. Once I copied example 8 and put the Projection only in display(), the program worked as intended.
 
 ### Description
 Use framebuffers and renderbuffers to draw a post-processed scene.
 
-### Limitations
-I still have not managed to debug the cause of the black screen. The text still shows up. I am not sure which line would render the framebuffer.
-
 ## Interaction
+Press M to change the filter mode. The modes are:
+* 0: No filter
+* 1: Blur
+* 2: Prewitt
+The mode defaults to 1 (blur).
 Press P to toggle projection mode (orthogonal or perspective).  
 Press the nubmer 0 to re-center the object.  
 Use arrow keys to make the camera orbit the scene.
