@@ -1,13 +1,14 @@
-# Homework 7 - Stored Textures
+# Homework 8 - Particle System
 John Salame
 CSCI 5239 Spring 2023
 
 ## Time taken
-1 - 1.5 hours
+4 hours
 
 ### Description
-Use noise to add randomization to the heights of the grass.
-Previously I had done my randomization in the main function, but now it is done using the noise texture "grassHeights" in firefly1.vert.
+I added some chaos to the motion of my fireflies. I replaced my individual shader variable per firefly with an array of firefly positions instead. This is much cleaner and more scalable.  
+My idea is to surround my fireflies with particle effects. However, in the interest of time, I will simply turn the fireflies into particle effects for this assignment. I may also improve the grass in future assignments, as it looks a bit awful now.  
+
 
 ### Limitations
 I still have not managed to debug the cause of the black screen. The text still shows up. I am not sure which line would render the framebuffer.
