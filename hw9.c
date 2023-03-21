@@ -333,8 +333,21 @@ int InitSparks(int numSparks, float fireflyColors[]) {
 
 
 // draw sparks around fireflies
-void DrawSparks(float fireflyPositions[], int numSparks, int numFireflies) {
-  unsigned int currentShader = computeShader;
+void DrawFireflies(float fireflyPositions[], int numSparks, int numFireflies) {
+  unsigned int currentShader = simpleShader;
+  // first, draw the fireflies
+  for (int i = 0; i < 4; ++i) {
+    mat4copy(modelView1, modelViewMat); // replacement for glPushMatrix()
+    mat4translate(modelViewMat, fireflyPositions[4 * i + 0], fireflyPositions[4 * i + 1], fireflyPositions[4 * i + 2]);
+    mat4scale(modelViewMat, 0.05, 0.05, 0.05);
+    PassMatricesToShader(currentShader, viewMat, modelViewMat, projectionMat);
+    SimpleIcosahedron(currentShader); // represents a point light
+    mat4copy(modelViewMat, modelView1); // replacement for glPopMatrix()
+  }
+  ErrCheck("fireflies draw");  
+      
+      
+  currentShader = computeShader;
   //  Launch compute shader
   glUseProgram(currentShader);
   unsigned int id = glGetUniformLocation(currentShader, "lifespan");
@@ -384,7 +397,7 @@ void DrawSparks(float fireflyPositions[], int numSparks, int numFireflies) {
     id = glGetAttribLocation(currentShader, "ParentVertex");
     glUniform4fv(id, 1, fireflyPositions + 4 * i); // 4 is the number of elements in the position
     glDrawArrays(GL_POINTS, i * numSparksPerFirefly, numSparksPerFirefly);
-    ErrCheck("draw fireflies loop");
+    ErrCheck("draw firefly sparks loop");
   }
 
   // undo firefly settings
@@ -396,7 +409,7 @@ void DrawSparks(float fireflyPositions[], int numSparks, int numFireflies) {
   id = glGetAttribLocation(currentShader, "Color");
   glDisableVertexAttribArray(id);
   glBindTexture(GL_TEXTURE_2D, blankTexture);
-  ErrCheck("fireflies draw");
+  ErrCheck("firefly sparks draw");
 }
 
 
@@ -588,7 +601,7 @@ void display(GLFWwindow* window)
   glBindVertexArray(0);
 
   // Draw firefly sparks
-  DrawSparks(fireflyPositions, numSparks, numFireflies);
+  DrawFireflies(fireflyPositions, numSparks, numFireflies);
 
   //  Revert to fixed pipeline
   glUseProgram(0);
