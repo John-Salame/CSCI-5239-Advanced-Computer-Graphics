@@ -8,11 +8,13 @@ uniform mat4 ModelViewMatrix;
 uniform mat4 ModelViewProjectionMatrix;
 uniform mat3 NormalMatrix;
 
-in vec4 Vertex;
+uniform vec4 ParentVertex; // where the particle is coming from
+
+in vec4 Offset;
 in vec4 Color;
 out vec4 FrontColor;
 
 void main() {
-  gl_Position = ModelViewProjectionMatrix * Vertex;
+  gl_Position = ModelViewProjectionMatrix * (ParentVertex + Offset);
   FrontColor = Color;
 }
