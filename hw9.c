@@ -47,6 +47,7 @@ unsigned int id = 0; // shader input locations
 float viewMat[16];
 float modelViewMat[16];
 float projectionMat[16];
+float fireflyModelViewMat[16];
 float modelView1[16]; // temporary solution to glPushMatrix()
 float modelView2[16]; // temporary solution to glPushMatrix()
 // shader program names
@@ -334,15 +335,18 @@ int InitSparks(int numSparks, float fireflyColors[]) {
 
 // draw sparks around fireflies
 void DrawFireflies(float fireflyPositions[], int numSparks, int numFireflies) {
+  mat4copy(modelView1, modelViewMat); // replacement for glPushMatrix()
+  mat4copy(modelViewMat, fireflyModelViewMat); // use the same modelViewMatrix as when we created the fireflies
   unsigned int currentShader = simpleShader;
+  glUseProgram(currentShader);
   // first, draw the fireflies
-  for (int i = 0; i < 4; ++i) {
-    mat4copy(modelView1, modelViewMat); // replacement for glPushMatrix()
+  for (int i = 0; i < numFireflies; ++i) {
+    mat4copy(modelView2, modelViewMat); // replacement for glPushMatrix()
     mat4translate(modelViewMat, fireflyPositions[4 * i + 0], fireflyPositions[4 * i + 1], fireflyPositions[4 * i + 2]);
     mat4scale(modelViewMat, 0.05, 0.05, 0.05);
     PassMatricesToShader(currentShader, viewMat, modelViewMat, projectionMat);
     SimpleIcosahedron(currentShader); // represents a point light
-    mat4copy(modelViewMat, modelView1); // replacement for glPopMatrix()
+    mat4copy(modelViewMat, modelView2); // replacement for glPopMatrix()
   }
   ErrCheck("fireflies draw");  
       
@@ -378,7 +382,7 @@ void DrawFireflies(float fireflyPositions[], int numSparks, int numFireflies) {
 
   // use positions calculated by compute shader
   glBindBuffer(GL_ARRAY_BUFFER, posbuf);
-  id = glGetAttribLocation(currentShader, "Offset");
+  id = glGetAttribLocation(currentShader, "Vertex");
   glVertexAttribPointer(id, 4, GL_FLOAT, 0, 16, (void*)0);
   glEnableVertexAttribArray(id);
 
@@ -389,14 +393,16 @@ void DrawFireflies(float fireflyPositions[], int numSparks, int numFireflies) {
   glEnableVertexAttribArray(id);
   ErrCheck("set up to draw firefly particles");
 
-  // draw the fireflies
+  // draw the sparks surrounding the fireflies
   PassMatricesToShader(currentShader, viewMat, modelViewMat, projectionMat);
   int numSparksPerFirefly = numSparks / numFireflies;
   for (int i = 0; i < numFireflies; i++) {
     // set the location of the firefly who is the source of this spark
-    id = glGetAttribLocation(currentShader, "ParentVertex");
-    glUniform4fv(id, 1, fireflyPositions + 4 * i); // 4 is the number of elements in the position
+    mat4copy(modelView2, modelViewMat); // replacement for glPushMatrix()
+    mat4translate(modelViewMat, fireflyPositions[4 * i + 0], fireflyPositions[4 * i + 1], fireflyPositions[4 * i + 2]);
+    PassMatricesToShader(currentShader, viewMat, modelViewMat, projectionMat);
     glDrawArrays(GL_POINTS, i * numSparksPerFirefly, numSparksPerFirefly);
+    mat4copy(modelViewMat, modelView2); // replacement for glPopMatrix()
     ErrCheck("draw firefly sparks loop");
   }
 
@@ -404,12 +410,13 @@ void DrawFireflies(float fireflyPositions[], int numSparks, int numFireflies) {
   glDisable(GL_POINT_SPRITE);
   glDisable(GL_BLEND);
   glDepthMask(1);
-  id = glGetAttribLocation(currentShader, "Offset");
+  id = glGetAttribLocation(currentShader, "Vertex");
   glDisableVertexAttribArray(id);
   id = glGetAttribLocation(currentShader, "Color");
   glDisableVertexAttribArray(id);
   glBindTexture(GL_TEXTURE_2D, blankTexture);
   ErrCheck("firefly sparks draw");
+  mat4copy(modelViewMat, modelView1); // replacement for glPopMatrix()
 }
 
 
@@ -494,14 +501,12 @@ void display(GLFWwindow* window)
 
   
   // set up the fireflies
-  float fireflyModelViewMat[16];
   // hold the positions of four fireflies
   float fireflyPositions[16] = 
   { 1.0, 1.0, 2.0, 1.0 ,
    -1.0, 1.0, 1.0, 1.0 ,
    0.0, 1.0, -2.0, 1.0 ,
    0.5, 0.5, 0.0, 1.0 };
-  mat4copy(fireflyModelViewMat, modelViewMat); // store the current modelViewMatrix so we can place the fireflies in the scene and remember their positions for later
 
   // make the fireflies move a bit in a cyclical way
   for (int i = 0; i < 4; ++i) {
@@ -723,7 +728,7 @@ int CreateShaderProgCompute(char* file)
 int main(int argc,char* argv[])
 {
   //  Initialize GLFW
-  GLFWwindow* window = InitWindow("John Salame HW 9 - Advanced Shaders (Compute Shader)",0,600,600,&reshape,&key);
+  GLFWwindow* window = InitWindow("John Salame HW 9 - Advanced Shaders (Compute Shader)",1,600,600,&reshape,&key);
 
   //  Load shader
   simpleShader = CreateShaderProg("simple.vert", "simple.frag");

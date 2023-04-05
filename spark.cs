@@ -20,13 +20,15 @@ uniform float deltaTime;
 // Weak Gravity
 // const vec3 G = vec3(0.0, -3.0, 0.0);
 const float resistance = 0.3; // somewhat strong air resistance
-// Time step
-const float  dt = 0.1;
+const float simulationSpeed = 1.0;
 
 void main()
 {
   //  Global Thread ID
   uint gid = gl_GlobalInvocationID.x;
+
+  // Time step
+  const float dt = simulationSpeed * deltaTime; // simulation speed * time passed
 
   //  Get position and velocity
   vec3 p0 = pos[gid].xyz;

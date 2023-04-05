@@ -8,7 +8,6 @@ uniform mat4 ViewMatrix;
 uniform mat4 ModelViewMatrix;
 uniform mat4 ModelViewProjectionMatrix;
 uniform mat3 NormalMatrix;
-vec4 adjustedVertex;
 
 // Light propeties (taken from example 6)
 uniform float fov;
@@ -48,11 +47,12 @@ vec4 applyFirefly(vec4 pos, vec4 firefly) {
   return retColor;
 }
 
-// Taken from example 6
-vec4 phong()
+// Adapted from example 6
+// pos is the vertex position multiplied by ModelViewMatrix
+vec4 phong(vec4 pos)
 {
    //  P is the vertex coordinate on body
-   vec3 P = vec3(ModelViewMatrix * adjustedVertex);
+   vec3 P = vec3(pos);
    //  N is the object normal at P
    vec3 N = normalize(NormalMatrix * Normal);
    //  L is the light vector
@@ -85,10 +85,10 @@ void main() {
   // calculate where the vertex would normally be
   vec4 pos = ModelViewMatrix * Vertex;
   float grassHeight = 0.8 + 3 * texture(grassHeights, pos.xyz).y;  // range of heights is [0.8, 1.2]
-  adjustedVertex = vec4(Vertex.x, Vertex.y * grassHeight, Vertex.z, 1.0);
+  vec4 adjustedVertex = vec4(Vertex.x, Vertex.y * grassHeight, Vertex.z, 1.0);
   // recalculate position using new modelview vertex
   pos = ModelViewMatrix * adjustedVertex;
-  vec4 color = phong();
+  vec4 color = phong(pos);
   // color grass more yellow if close to a firefly
   for(int i = 0; i < 4; i++) {
     color += applyFirefly(pos, fireflies[i]);
