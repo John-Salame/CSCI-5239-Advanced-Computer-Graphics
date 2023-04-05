@@ -36,14 +36,14 @@ out vec2 Texcoord;
 
 
 // vertex position and firefly position
-vec4 applyFirefly(vec4 pos, vec4 firefly) {
+vec4 applyFireflyLight(vec4 pos, vec4 firefly, float intensity) {
   vec4 retColor = vec4(0.0);
   // add some noise as a function of time to firefly before calculating the position in model view coordinates.
   // this creates flicker in the light.
   vec4 fireflyPos = fireflyModelView * (firefly + texture(grassHeights, firefly.xyz + vec3(t)));
   vec3 diff = pos.xyz - fireflyPos.xyz;
   float mag = dot(diff, diff);
-  retColor = vec4(0.1, 0.05, 0.0, 1.0) / (mag+0.1);
+  retColor = intensity * vec4(0.1, 0.05, 0.0, 1.0) / (mag+0.1);
   return retColor;
 }
 
@@ -91,7 +91,7 @@ void main() {
   vec4 color = phong(pos);
   // color grass more yellow if close to a firefly
   for(int i = 0; i < 4; i++) {
-    color += applyFirefly(pos, fireflies[i]);
+    color += applyFireflyLight(pos, fireflies[i], 1.0);
   }
   gl_Position = ModelViewProjectionMatrix * adjustedVertex;
   FrontColor = color;

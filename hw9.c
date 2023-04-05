@@ -349,7 +349,7 @@ void DrawFireflies(float fireflyPositions[], int numSparks, int numFireflies) {
     mat4copy(modelViewMat, modelView2); // replacement for glPopMatrix()
   }
   ErrCheck("fireflies draw");  
-      
+  
       
   currentShader = computeShader;
   //  Launch compute shader
@@ -358,8 +358,13 @@ void DrawFireflies(float fireflyPositions[], int numSparks, int numFireflies) {
   glUniform1f(id, lifespan);
   id = glGetUniformLocation(currentShader, "deltaTime");
   glUniform1f(id, dt);
+  id = glGetUniformLocation(fireflyShader, "noiseTexture");
+  glUniform1i(id, 1); // texture unit 1 (noise)
   // glDispatchComputeGroupSizeARB(n/nw,1,1,nw,1,1);
   glDispatchCompute(maxParticles / nw, 1, 1); // compensate for inability to use extension on my computer
+
+  //  Wait for compute shader
+  glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
   // PREPARE TO DRAW FIREFLY SPARKS using particle shader -- transparent stuff is drawn last
   // Example 16 is used as reference, and some code is borrowed.
