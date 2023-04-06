@@ -246,10 +246,13 @@ int ResetSparks(int numSparks, float fireflyColors[]) {
   pos = (vec4*)glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, numSparks * sizeof(vec4), GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT);
   for (int i = 0; i < numSparks; i++)
   {
+    /*
     pos[i].x = frand(-0.05, 0.05);
     pos[i].y = frand(-0.05, 0.05);
     pos[i].z = frand(-0.05, 0.05);
-    pos[i].w = 1;
+    */
+    pos[i].x = pos[i].y = pos[i].z = 0.0;
+    pos[i].w = 1.0;
   }
   glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
 
@@ -258,9 +261,12 @@ int ResetSparks(int numSparks, float fireflyColors[]) {
   vel = (vec4*)glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, numSparks * sizeof(vec4), GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT);
   for (int i = 0; i < numSparks; i++)
   {
+    /*
     vel[i].x = frand(-0.3, 0.3);
     vel[i].y = frand(-0.2, 0.4);
     vel[i].z = frand(-0.3, 0.3);
+    */
+    vel[i].x = vel[i].y = vel[i].z = 0.0;
     vel[i].w = 1;
   }
   glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
@@ -358,13 +364,16 @@ void DrawFireflies(float fireflyPositions[], int numSparks, int numFireflies) {
   glUniform1f(id, lifespan);
   id = glGetUniformLocation(currentShader, "deltaTime");
   glUniform1f(id, dt);
-  id = glGetUniformLocation(fireflyShader, "noiseTexture");
+  id = glGetUniformLocation(currentShader, "t");
+  glUniform1f(id, (float) currentTime); // texture unit 1 (noise)
+  id = glGetUniformLocation(currentShader, "noiseTexture");
   glUniform1i(id, 1); // texture unit 1 (noise)
   // glDispatchComputeGroupSizeARB(n/nw,1,1,nw,1,1);
   glDispatchCompute(maxParticles / nw, 1, 1); // compensate for inability to use extension on my computer
 
   //  Wait for compute shader
   glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+  ErrCheck("spark compute shader");
 
   // PREPARE TO DRAW FIREFLY SPARKS using particle shader -- transparent stuff is drawn last
   // Example 16 is used as reference, and some code is borrowed.
@@ -374,17 +383,20 @@ void DrawFireflies(float fireflyPositions[], int numSparks, int numFireflies) {
   glPointSize(10); // use small particles
   // glPointSize(25);
   glActiveTexture(GL_TEXTURE0);
-  glBindTexture(GL_TEXTURE_2D, starTexture);
+  glBindTexture(GL_TEXTURE_2D, starTexture); // spark sprite
   glEnable(GL_POINT_SPRITE);
   glTexEnvi(GL_POINT_SPRITE, GL_COORD_REPLACE, GL_TRUE);
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE);
   glDepthMask(0); // disable z-buffer
 
-  // prepare vertex attributes
-  id = glGetUniformLocation(currentShader, "tex");
+  // prepare uniforms for particle shader
+  id = glGetUniformLocation(currentShader, "sprite");
   glUniform1i(id, 0); // texture unit 0
+  id = glGetUniformLocation(currentShader, "noiseTexture");
+  glUniform1i(id, 1); // texture unit 1 (noise)
 
+  // prepare vertex attributes
   // use positions calculated by compute shader
   glBindBuffer(GL_ARRAY_BUFFER, posbuf);
   id = glGetAttribLocation(currentShader, "Vertex");
@@ -496,7 +508,7 @@ void display(GLFWwindow* window)
   // Set texture units for samplers
   id = glGetUniformLocation(fireflyShader, "tex");
   glUniform1i(id, 0); // texture unit 0
-  id = glGetUniformLocation(fireflyShader, "grassHeights");
+  id = glGetUniformLocation(fireflyShader, "noiseTexture");
   glUniform1i(id, 1); // texture unit 1 (noise)
 
   // draw the base plate
@@ -564,7 +576,6 @@ void display(GLFWwindow* window)
     printf("Allocating grass VBO of size %d\n", grassVboSize);
     grassDataMain = malloc(grassVboSize);
     copyGrassData(grassDataMain, numBlades);
-    /*
     // adjust grass heights from main program
     int grassVertices = getNumVerticesPerGrass();
     float* seek = grassDataMain + 1; // start at the first y value
@@ -574,7 +585,6 @@ void display(GLFWwindow* window)
         seek += 13; // skip 13 floats since that is how many attributes exist per vertex
       }
     }
-    */
     InitGrassVBO(grassDataMain, grassVboSize, &grassVbo);
     InitGrassVAO(fireflyShader, &grassVbo, &grassVao);
     ErrCheck("grass main");

@@ -23,7 +23,7 @@ uniform vec4[4] fireflies; // array of firefly positions
 uniform float t;
 
 // change the height of anything which has non-zero y value
-uniform sampler3D grassHeights;
+uniform sampler3D noiseTexture;
 
 //  Vertex attributes (input)
 in vec4 Vertex;
@@ -40,7 +40,7 @@ vec4 applyFireflyLight(vec4 pos, vec4 firefly, float intensity) {
   vec4 retColor = vec4(0.0);
   // add some noise as a function of time to firefly before calculating the position in model view coordinates.
   // this creates flicker in the light.
-  vec4 fireflyPos = fireflyModelView * (firefly + texture(grassHeights, firefly.xyz + vec3(t)));
+  vec4 fireflyPos = fireflyModelView * (firefly + texture(noiseTexture, firefly.xyz + vec3(t)) - vec4(0.25, 0.125, 0.0625, 0.03125));
   vec3 diff = pos.xyz - fireflyPos.xyz;
   float mag = dot(diff, diff);
   retColor = intensity * vec4(0.1, 0.05, 0.0, 1.0) / (mag+0.1);
@@ -84,16 +84,12 @@ vec4 phong(vec4 pos)
 void main() {
   // calculate where the vertex would normally be
   vec4 pos = ModelViewMatrix * Vertex;
-  float grassHeight = 0.8 + 3 * texture(grassHeights, pos.xyz).y;  // range of heights is [0.8, 1.2]
-  vec4 adjustedVertex = vec4(Vertex.x, Vertex.y * grassHeight, Vertex.z, 1.0);
-  // recalculate position using new modelview vertex
-  pos = ModelViewMatrix * adjustedVertex;
   vec4 color = phong(pos);
   // color grass more yellow if close to a firefly
   for(int i = 0; i < 4; i++) {
     color += applyFireflyLight(pos, fireflies[i], 1.0);
   }
-  gl_Position = ModelViewProjectionMatrix * adjustedVertex;
+  gl_Position = ModelViewProjectionMatrix * Vertex;
   FrontColor = color;
   Texcoord = Texture;
 }

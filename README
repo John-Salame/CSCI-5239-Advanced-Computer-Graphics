@@ -7,6 +7,14 @@ CSCI 5239 Spring 2023
 0.5 additional hours getting an incorrect program that meets the requirements.
 * The little stars / sparks are centered around the origin instead of the fireflies. I think I fail to correctly set ParentVertex in the particle shader.
 
+After turning in homework 9, I worked for 8 more hours to fix the bugs with firefly rendering and spark positions.  
+* I also attempted to improve the particle lifecycle by re-initializing the particle (reincarnating) after its lifetime reaches the lifespan.
+* Figured out how the Perlin Noise works (x, y, z, w are values that become more fine-grained with double the frequency and half the amplitude as the previous dimension)
+* Figured out that Perlin Noise sucks for determining my grass heights; the heights don't vary much. Maybe the spacing of the grass correlates with some frequency.
+* * Reverted back to randomizing grass heights at the time the VBO is created.
+* Added gravity to the sparks.
+
+
 ### Description
 I attempted to make little particles that explode away from a firefly. I planned to have the particles periodically disappear and respawn but did not have time to implement that. The particles also do not follow the fireflies for some reason.
 
