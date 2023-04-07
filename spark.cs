@@ -21,8 +21,8 @@ uniform float t;
 uniform sampler3D noiseTexture;
 
 // Constants
-// const vec3 G = vec3(0.0, -3.0, 0.0); // weak gravity
-const float resistance = 0.2; // somewhat strong air resistance
+const vec3 G = vec3(0.0, -3.0, 0.0); // weak gravity
+const float resistance = 0.5; // somewhat strong air resistance
 const float simulationSpeed = 1.0;
 const vec3 minPosition = vec3(-0.15, -0.15, -0.15);
 const vec3 maxPosition = vec3(0.15, 0.15, 0.15);
@@ -38,13 +38,27 @@ vec3 myRand(vec3 seed, vec3 randMin, vec3 randMax)
   return randMin + (randMax - randMin) * mixPercent;
 }
 
-void resetPositionWhenNecessary(in float seed, in float lifespan, in float timeSinceBirth, in vec3 position, in vec3 velocity, out vec3 newPos, out vec3 newVel, out float newTimeSinceBirth)
+// produce random numbers favoring the extremes, with a cutoff preventing mid-range numbers from existing
+// enter a cutoff value of 0 to generate only numbers at the min or max, and a cutoff of 1 to allow all numbers, and an intermediate cutoff for an intermediate effect.
+// assume randMax >= randMin (I don't know what would happen otherwise)
+vec3 extremeRand(vec3 seed, float cutoff, vec3 randMin, vec3 randMax)
+{
+  vec3 randResult = myRand(seed, randMin, randMax);
+  vec3 midpoint = (randMax + randMin) / 2.0;
+  vec3 span = (randMax - randMin) / 2.0; // dist from midpoint to extreme
+  vec3 sign = (2.0 * step(0, randResult - midpoint)) - 1.0; // 0 counts as positive. Sign will be 1 or -1.
+  vec3 bounds = span * cutoff; // maximum distance of a random value from an endpoint
+  vec3 distFromEndpoint = abs(randResult - midpoint);
+  vec3 adjustment = bounds * (distFromEndpoint * distFromEndpoint) / (span * span + 1); // element-wise operations
+  return midpoint + sign * (span - adjustment);
+}
+
+void resetPositionWhenNecessary(in float seed, float tolerance, in float lifespan, in float timeSinceBirth, in vec3 position, in vec3 velocity, out vec3 newPos, out vec3 newVel, out float newTimeSinceBirth)
 {
   float dead = 1 - step(timeSinceBirth, lifespan); // 0.0 if timeSinceBirth <= lifespan, 1.0 if timeSinceBirth > lifespan
   // if particle is "dead," re-initialize position and velocity. Otherwise, leave them be (left part would be 1.0 * existing, right part would be 0.0 * new)
-  // use gid to give each particle a different seed since end conditions are very similar otherwise
-  newPos = mix(position, myRand(position + seed, minPosition, maxPosition), dead);
-  newVel = mix(velocity, myRand(velocity + seed, minVelocity, maxVelocity), dead);
+  newPos = mix(position, extremeRand(position + seed, 0.5, minPosition, maxPosition), dead);
+  newVel = mix(velocity, extremeRand(velocity + seed, 0.5, minVelocity, maxVelocity), dead);
   newTimeSinceBirth = (1 - dead) * timeSinceBirth; // set newTimeSinceBirth to 0 if dead; keep it unmodified otherwise.
 }
 
@@ -62,12 +76,13 @@ void main()
 
   //  Get position and velocity
   vec3 p0, v0;
-  resetPositionWhenNecessary(gid + t, lifespan, lifetimeInstance, pos[gid].xyz, vel[gid].xyz, p0, v0, lifetimeInstance); // if the lifetime is over, re-initialize the particle properties
+  resetPositionWhenNecessary(gid / 100.0 + t, 0.01, lifespan, lifetimeInstance, pos[gid].xyz, vel[gid].xyz, p0, v0, lifetimeInstance); // if the lifetime is over, re-initialize the particle properties
 
-  // Don't apply gravity
   vec3 p = p0 + v0 * dt;
+  // apply gravity (use a minus if you want to invert gravity; it looks cool)
+  vec3 v = v0 - G * dt;
   // Apply air resistance after moving the point
-  vec3 v = v0 * (1.0 - dt * resistance);
+  v = v * (1.0 - dt * resistance); // need to use dt somehow to make it consistent no matter the fps
 
   pos[gid].xyz = p;
   vel[gid].xyz = v;

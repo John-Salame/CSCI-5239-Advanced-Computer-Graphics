@@ -380,7 +380,7 @@ void DrawFireflies(float fireflyPositions[], int numSparks, int numFireflies) {
   currentShader = particleShader;
   glUseProgram(currentShader); // this should be a particle shader
   //  Set particle size
-  glPointSize(10); // use small particles
+  glPointSize(15); // use small particles
   // glPointSize(25);
   glActiveTexture(GL_TEXTURE0);
   glBindTexture(GL_TEXTURE_2D, starTexture); // spark sprite
@@ -743,7 +743,7 @@ int CreateShaderProgCompute(char* file)
 int main(int argc,char* argv[])
 {
   //  Initialize GLFW
-  GLFWwindow* window = InitWindow("John Salame HW 9 - Advanced Shaders (Compute Shader)",1,600,600,&reshape,&key);
+  GLFWwindow* window = InitWindow("John Salame HW 9 - Advanced Shaders (Compute Shader)",0,600,600,&reshape,&key);
 
   //  Load shader
   simpleShader = CreateShaderProg("simple.vert", "simple.frag");
