@@ -1,21 +1,32 @@
-# Homework 8 - Particle System
+# Homework 9 - Advanced Shaders (Compute Shader)
 John Salame
 CSCI 5239 Spring 2023
 
 ## Time taken
-4 hours
+4 hours getting a runnable program.  
+0.5 additional hours getting an incorrect program that meets the requirements.
+* The little stars / sparks are centered around the origin instead of the fireflies. I think I fail to correctly set ParentVertex in the particle shader.
+
+After turning in homework 9, I worked for 8 more hours to fix the bugs with firefly rendering and spark positions.  
+* I also attempted to improve the particle lifecycle by re-initializing the particle (reincarnating) after its lifetime reaches the lifespan.
+* Figured out how the Perlin Noise works (x, y, z, w are values that become more fine-grained with double the frequency and half the amplitude as the previous dimension)
+* Figured out that Perlin Noise sucks for determining my grass heights; the heights don't vary much. Maybe the spacing of the grass correlates with some frequency.
+* * Reverted back to randomizing grass heights at the time the VBO is created.
+
+I then spent 7 more hours on the assignment.
+* Made the velocities of the sparks more extreme by creating the extremeRand function in spark.cs.
+* I spent a long time trying to derive a closed form for the spark trajectory including gravity.
+* * I could not figure it out with calculus. Maybe I kept making mistakes. I decided to just use the method Vlakkies mentioned in class. I'm not sure if it's completely correct or an approximation.
+* I added inverted gravity to the spark particles so they rise up like embers.
+
 
 ### Description
-I added some chaos to the motion of my fireflies. I replaced my individual shader variable per firefly with an array of firefly positions instead. This is much cleaner and more scalable.  
-My idea is to surround my fireflies with particle effects. However, in the interest of time, I will simply turn the fireflies into particle effects for this assignment. I may also improve the grass in future assignments, as it looks a bit awful now.  
+I attempted to make little particles that explode away from a firefly. I planned to have the particles periodically disappear and respawn but did not have time to implement that. The particles also do not follow the fireflies for some reason.
 
-
-### Limitations
-I still have not managed to debug the cause of the black screen. The text still shows up. I am not sure which line would render the framebuffer.
 
 ## Interaction
+Press the number 0 to replay the particle effect with new initial values or reset the view of the scene.
 Press P to toggle projection mode (orthogonal or perspective).  
-Press the nubmer 0 to re-center the object.  
 Use arrow keys to make the camera orbit the scene.  
 Press +/- to add or remove patches of grass.  
 Press PG UP / PG DOWN or the square brackets to zoom in or out.
