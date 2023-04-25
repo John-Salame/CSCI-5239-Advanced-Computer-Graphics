@@ -16,12 +16,16 @@ I then spent 7 more hours on the assignment.
 * * I could not figure it out with calculus. Maybe I kept making mistakes. I decided to just use the method Vlakkies mentioned in class. I'm not sure if it's completely correct or an approximation.
 * I added inverted gravity to the spark particles so they rise up like embers.
 
-Part Related to Compute Shader (Boids):
+Part Related to Compute Shader (Boids) (6.5 hr total):
 * 4 hr modifying my program to allow for swarms of fireflies to be created and contribute to lighting.
 * 1 hr adding cohesion and steering toward average heading (it's too cohesive at this point, converges to uniform flock too quickly)
+* 1.5 hr messing with the settings trying and failing to get a chaotic swarm. It is still very cohesive. Maybe it would require different equations.
+* * I also added a bounding box of sorts to prevent the fireflies from flying off-screen. It gently pulls them toward (0, 1.5, 0).
+* The swarm looks pretty lame. I will add some noise to the velocity at the very least. It should make the animation more interesting.
+* Change aversion to 0 if you want something more exciting that looks more like typical Boids.
 
 Final Project Total:
-20 hours
+22.5 hours
 
 
 ### Description

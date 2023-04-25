@@ -19,17 +19,27 @@ uniform int numFireflies;
 
 // Constants
 const float simulationSpeed = 1.0;
+
+// related to separation (avoiding peers who are too close)
+const float hostileDistance = 0.05;
+const float hostileDistanceSquared = hostileDistance * hostileDistance;
+const float aversion = 0.5; // how much you want to avoid peers. This should be the strongest force if we don't want a super stable flock. We keep it low since we face aversion from multiple peers.
+const float aversionDecay = 5.0;
+
 // related to steering toward average heading
 const float localDistance = 0.5; // how close other members must be in order to be considered "flockmates"
 const float localDistanceSquared = localDistance * localDistance;
-const float targetSteeringTime = 1.0; // how many seconds it should take to match the average heading of the flockmates
+const float targetSteeringTime = 1.5; // how many seconds it should take to match the average heading of the flockmates
 const float minSteerAcceleration = 1.0; // we need this to be larger than min cohesion speed so we focus on steering toward average heading once we are near the flock.
 const float maxSteerAcceleration = 1.5;
 
 // related to cohesion
-const float travelTimeToCenter = 2.0; // how many seconds you would like to take when trying to reach the center
+const float travelTimeToCenter = 1.0; // how many seconds you would like to take when trying to reach the center
 const float minCohesionSpeed = 0.5; // units per second
-const float maxCohesionSpeed = 2.0; // units per second
+const float maxCohesionSpeed = 3.0; // units per second
+
+// barrier to keep fireflies from escaping the scene
+const float barrierStrength = 0.01;
 
 void main()
 {
@@ -41,11 +51,25 @@ void main()
   vec3 p0 = pos[gid].xyz;
   vec3 v0 = vel[gid].xyz;
   float speedLimit = 0.0; // use later with a differnt value
+  float neighbors = 0.0; // use for separation and alignment.
 
   // https://en.wikipedia.org/wiki/Boids
-  // 2. Steer toward the average heading of local flockmates
+  // 1. Separation: Avoid crowding local flockmates
+  vec3 repulsion = vec3(0.0);
+  for (int i = 0; i < numFireflies; ++i)
+  {
+    vec3 diff = p0 - pos[i].xyz;
+    float dist = dot(diff, diff);
+    float close = step(hostileDistanceSquared, dist); // 1.0 if you are nearby (local flockmates)
+    neighbors += close;
+    repulsion += diff * close * (aversion / (aversionDecay * dist + 1.0 - hostileDistanceSquared)); // if you are closer than hostile distance, this number grows larger than aversion
+  }
+  // not sure if I should average the repulsion or not. If I don't, it could get out of hand fast!
+  // repulsion /= neighbors;
+
+  // 2. Alignment: Steer toward the average heading of local flockmates
   vec3 heading = vec3(0.0);
-  float neighbors = 0; // number of neighbors
+  neighbors = 0; // number of neighbors
   for (int i = 0; i < numFireflies; ++i)
   {
     vec3 diff = p0 - pos[i].xyz;
@@ -63,7 +87,7 @@ void main()
   speedLimit = max(steeringAccelerationMagnitude, minSteerAcceleration) / steeringAccelerationMagnitude;
   steeringAcceleration *= speedLimit;
 
-  // 3. Calculate center of mass for cohesion
+  // 3. Cohesion: Calculate center of mass for cohesion
   vec3 com; // com = center of mass
   for (int i = 0; i < numFireflies; ++i)
   {
@@ -78,7 +102,11 @@ void main()
   speedLimit = max(cohesionSpeed, minCohesionSpeed) / cohesionSpeed;
   cohesionVelocity *= speedLimit;
 
-  vec3 v = v0 + (steeringAcceleration + cohesionVelocity) * dt;
+  // barrier to prevent excape from scene
+  vec3 barrierDir = vec3(0, 1.5, 0) - p0;
+  vec3 barrierAcceleration = barrierDir * length(barrierDir) * barrierStrength;
+
+  vec3 v = v0 + (repulsion + steeringAcceleration + cohesionVelocity + barrierAcceleration) * dt;
   vec3 p = p0 + v * dt;
 
   pos[gid].xyz = p;

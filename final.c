@@ -74,8 +74,8 @@ float lifespan = 3.0; // lifespan in seconds (maximum lifetime) of spark particl
 int numSparks = 0; // calculate in main method
 const int sparksPerFirefly = 5;
 const int sparksPerWorkGroup = 100; // must be a multiple of sparksPerFirefly.
-const int firefliesPerSwarm = 5;
-const int numFireflySwarms = 4; // initial number of swarms (they may merge later on)
+const int firefliesPerSwarm = 10;
+const int numFireflySwarms = 6; // initial number of swarms (they may merge later on)
 int numFireflies = 0; // calculate in InitFireflies.
 const int maxFireflies = 100;
 double oldTime;
@@ -248,9 +248,9 @@ void ResetFireflies(int firefliesPerSwarm, int numFireflySwarms, int numFireflie
   {
     int swarmIndex = i * firefliesPerSwarm;
     vec4 swarmCenter;
-    swarmCenter.x = frand(-1.5, 1.5);
-    swarmCenter.y = frand(1.2, 1.5);
-    swarmCenter.z = frand(-1.5, 1.5);
+    swarmCenter.x = frand(-2.5, 2.5);
+    swarmCenter.y = frand(1.0, 1.5);
+    swarmCenter.z = frand(-2.5, 2.5);
     for (int j = 0; j < firefliesPerSwarm; ++j) {
       pos[swarmIndex + j].x = swarmCenter.x + frand(-0.3, 0.3);
       pos[swarmIndex + j].y = swarmCenter.y + frand(-0.3, 0.3);
