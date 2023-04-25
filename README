@@ -1,12 +1,9 @@
-# Homework 9 - Advanced Shaders (Compute Shader)
+# Advanced Computer Graphics Final Project
 John Salame
 CSCI 5239 Spring 2023
 
 ## Time taken
-4 hours getting a runnable program.  
-0.5 additional hours getting an incorrect program that meets the requirements.
-* The little stars / sparks are centered around the origin instead of the fireflies. I think I fail to correctly set ParentVertex in the particle shader.
-
+Final Project:
 After turning in homework 9, I worked for 8 more hours to fix the bugs with firefly rendering and spark positions.  
 * I also attempted to improve the particle lifecycle by re-initializing the particle (reincarnating) after its lifetime reaches the lifespan.
 * Figured out how the Perlin Noise works (x, y, z, w are values that become more fine-grained with double the frequency and half the amplitude as the previous dimension)
@@ -18,6 +15,12 @@ I then spent 7 more hours on the assignment.
 * I spent a long time trying to derive a closed form for the spark trajectory including gravity.
 * * I could not figure it out with calculus. Maybe I kept making mistakes. I decided to just use the method Vlakkies mentioned in class. I'm not sure if it's completely correct or an approximation.
 * I added inverted gravity to the spark particles so they rise up like embers.
+
+Part Related to Compute Shader (Boids):
+* 4 hr modifying my program to allow for swarms of fireflies to be created and contribute to lighting.
+
+Final Project Total:
+19 hours
 
 
 ### Description

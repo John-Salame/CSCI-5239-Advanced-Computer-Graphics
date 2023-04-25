@@ -11,6 +11,7 @@
 layout(binding = 4) buffer posbuf { vec4 pos []; };
 layout(binding = 5) buffer velbuf { vec4 vel []; };
 layout(binding = 6) buffer lifetimebuf { float lifetime []; };
+layout(binding = 7) buffer fireflyPosBuf { vec4 fireflyPos[]; };
 //  Work group size
 layout(local_size_x = 100, local_size_y = 1, local_size_z = 1) in; // 100 threads per work group
 
@@ -18,6 +19,7 @@ layout(local_size_x = 100, local_size_y = 1, local_size_z = 1) in; // 100 thread
 uniform float lifespan; // max lifetime
 uniform float deltaTime;
 uniform float t;
+uniform uint sparksPerFirefly;
 uniform sampler3D noiseTexture;
 
 // Constants
@@ -53,11 +55,12 @@ vec3 extremeRand(vec3 seed, float cutoff, vec3 randMin, vec3 randMax)
   return midpoint + sign * (span - adjustment);
 }
 
-void resetPositionWhenNecessary(in float seed, float tolerance, in float lifespan, in float timeSinceBirth, in vec3 position, in vec3 velocity, out vec3 newPos, out vec3 newVel, out float newTimeSinceBirth)
+void resetPositionWhenNecessary(in uint gid, in float seed, float tolerance, in float lifespan, in float timeSinceBirth, in vec3 position, in vec3 velocity, out vec3 newPos, out vec3 newVel, out float newTimeSinceBirth)
 {
   float dead = 1 - step(timeSinceBirth, lifespan); // 0.0 if timeSinceBirth <= lifespan, 1.0 if timeSinceBirth > lifespan
-  // if particle is "dead," re-initialize position and velocity. Otherwise, leave them be (left part would be 1.0 * existing, right part would be 0.0 * new)
-  newPos = mix(position, extremeRand(position + seed, 0.5, minPosition, maxPosition), dead);
+                                                   // if particle is "dead," re-initialize position and velocity. Otherwise, leave them be (left part would be 1.0 * existing, right part would be 0.0 * new)
+  vec3 sourceFireflyPos = fireflyPos[gid / sparksPerFirefly].xyz;
+  newPos = mix(position, extremeRand(position + seed, 0.5, minPosition, maxPosition) + sourceFireflyPos, dead);
   newVel = mix(velocity, extremeRand(velocity + seed, 0.5, minVelocity, maxVelocity), dead);
   newTimeSinceBirth = (1 - dead) * timeSinceBirth; // set newTimeSinceBirth to 0 if dead; keep it unmodified otherwise.
 }
@@ -76,11 +79,11 @@ void main()
 
   //  Get position and velocity
   vec3 p0, v0;
-  resetPositionWhenNecessary(gid / 100.0 + t, 0.01, lifespan, lifetimeInstance, pos[gid].xyz, vel[gid].xyz, p0, v0, lifetimeInstance); // if the lifetime is over, re-initialize the particle properties
+  resetPositionWhenNecessary(gid, gid / 100.0 + t, 0.01, lifespan, lifetimeInstance, pos[gid].xyz, vel[gid].xyz, p0, v0, lifetimeInstance); // if the lifetime is over, re-initialize the particle properties
 
   vec3 p = p0 + v0 * dt;
   // apply gravity (use a minus if you want to invert gravity; it looks cool)
-  vec3 v = v0 - G * dt;
+  vec3 v = v0 + G * dt;
   // Apply air resistance after moving the point
   v = v * (1.0 - dt * resistance); // need to use dt somehow to make it consistent no matter the fps
 
