@@ -18,9 +18,10 @@ I then spent 7 more hours on the assignment.
 
 Part Related to Compute Shader (Boids):
 * 4 hr modifying my program to allow for swarms of fireflies to be created and contribute to lighting.
+* 1 hr adding cohesion and steering toward average heading (it's too cohesive at this point, converges to uniform flock too quickly)
 
 Final Project Total:
-19 hours
+20 hours
 
 
 ### Description
