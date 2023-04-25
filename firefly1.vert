@@ -88,7 +88,7 @@ void main() {
   vec4 color = phong(pos);
   // color grass more yellow if close to a firefly
   for(int i = 0; i < numFireflies; i++) {
-    color += applyFireflyLight(pos, fireflies[i], 1.0);
+    color += applyFireflyLight(pos, fireflies[i], 10.0 / numFireflies);
   }
   gl_Position = ModelViewProjectionMatrix * Vertex;
   FrontColor = color;

@@ -265,9 +265,9 @@ void ResetFireflies(int firefliesPerSwarm, int numFireflySwarms, int numFireflie
   vel = (vec4*)glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, numFireflies * sizeof(vec4), GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT);
   for (int i = 0; i < numFireflies; i++)
   {
-    vel[i].x = frand(-1.0, 1.0);
+    vel[i].x = frand(-1.5, 1.5);
     vel[i].y = frand(-0.3, 0.3);
-    vel[i].z = frand(-1.0, 1.0);
+    vel[i].z = frand(-1.5, 1.5);
     vel[i].w = 1.0;
   }
   glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
@@ -304,9 +304,11 @@ void ComputeFireflyLocations() {
   unsigned int currentShader = boidsComputeShader;
   //  Launch compute shader
   glUseProgram(currentShader);
-  /*
   id = glGetUniformLocation(currentShader, "deltaTime");
   glUniform1f(id, dt);
+  id = glGetUniformLocation(currentShader, "numFireflies");
+  glUniform1i(id, numFireflies);
+  /*
   id = glGetUniformLocation(currentShader, "t");
   glUniform1f(id, (float)currentTime);
   */
