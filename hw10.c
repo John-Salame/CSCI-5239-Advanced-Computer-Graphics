@@ -1,7 +1,7 @@
 /*
  * John Salame
  * CSCI 5239 Advanced Computer Graphics
- * Final Project
+ * Homework 10 - Compute Shader
  *
  *  Key bindings:
  *  m          Toggle shader
@@ -14,7 +14,7 @@
 #include <stdlib.h>
 #include "CSCIx239.h"
 #include "grass.h"
-int mode=0;    //  Shader
+int mode=0;    //  Enable boids compute shader
 int th=0,ph=0; //  View angles
 int fov=57;    //  Field of view (for perspective)
 int tex=0;     //  Texture
@@ -430,7 +430,7 @@ void ComputeSparkLocations() {
 
 
 // draw sparks around fireflies
-void DrawFirefliesAndSparks(float fireflyPositions[], int numSparks, int numFireflies) {
+void DrawFirefliesAndSparks(vec4 fireflyPositions[], int numSparks, int numFireflies) {
   glBindBuffer(GL_SHADER_STORAGE_BUFFER, fireflyPosBuf);
   vec4* fireflyPos = (vec4*)glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, numFireflies * sizeof(vec4), GL_MAP_READ_BIT);
   // first, draw the fireflies
@@ -440,7 +440,7 @@ void DrawFirefliesAndSparks(float fireflyPositions[], int numSparks, int numFire
   glUseProgram(currentShader);
   for (int i = 0; i < numFireflies; ++i) {
     mat4copy(modelView2, modelViewMat); // replacement for glPushMatrix()
-    // mat4translate(modelViewMat, fireflyPositions[4 * i + 0], fireflyPositions[4 * i + 1], fireflyPositions[4 * i + 2]);
+    // mat4translate(modelViewMat, fireflyPositions[i].x, fireflyPositions[i].y, fireflyPositions[i].z);
     mat4translate(modelViewMat, fireflyPos[i].x, fireflyPos[i].y, fireflyPos[i].z);
     mat4scale(modelViewMat, 0.05, 0.05, 0.05);
     PassMatricesToShader(currentShader, viewMat, modelViewMat, projectionMat);
@@ -450,6 +450,7 @@ void DrawFirefliesAndSparks(float fireflyPositions[], int numSparks, int numFire
   glUnmapBuffer(GL_SHADER_STORAGE_BUFFER); // free up the memory mapping to the firefly locations
   ErrCheck("fireflies draw");  
   
+  /*
   ComputeSparkLocations();
 
   // PREPARE TO DRAW FIREFLY SPARKS using particle shader -- transparent stuff is drawn last
@@ -492,7 +493,7 @@ void DrawFirefliesAndSparks(float fireflyPositions[], int numSparks, int numFire
   for (int i = 0; i < numFireflies; i++) {
     // set the location of the firefly who is the source of this spark
     mat4copy(modelView2, modelViewMat); // replacement for glPushMatrix()
-    // mat4translate(modelViewMat, fireflyPositions[4 * i + 0], fireflyPositions[4 * i + 1], fireflyPositions[4 * i + 2]);
+    // mat4translate(modelViewMat, fireflyPositions[i].x, fireflyPositions[i].y, fireflyPositions[i].z);
     // mat4translate(modelViewMat, fireflyPos[i].x, fireflyPos[i].y, fireflyPos[i].z);
     // PassMatricesToShader(currentShader, viewMat, modelViewMat, projectionMat);
     glDrawArrays(GL_POINTS, i * sparksPerFirefly, sparksPerFirefly);
@@ -509,8 +510,9 @@ void DrawFirefliesAndSparks(float fireflyPositions[], int numSparks, int numFire
   id = glGetAttribLocation(currentShader, "Color");
   glDisableVertexAttribArray(id);
   glBindTexture(GL_TEXTURE_2D, blankTexture);
-  mat4copy(modelViewMat, modelView1); // replacement for glPopMatrix()
   ErrCheck("firefly sparks draw");
+  */
+  mat4copy(modelViewMat, modelView1); // replacement for glPopMatrix()
 }
 
 
@@ -527,6 +529,65 @@ void ResetView() {
     ResetSparks(numSparks, fireflyColors);
 }
 
+float dot3(vec4 v1, vec4 v2) {
+  return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
+}
+
+vec4 add3(vec4 v1, vec4 v2) {
+  vec4 result = { .x = v1.x + v2.x, .y = v1.y + v2.y, .z = v1.z + v2.z, .w = 1.0 };
+  return result;
+}
+
+vec4 scale3(float scalar, vec4 v) {
+  vec4 result = { .x = scalar * v.x, .y = scalar * v.y, .z = scalar * v.z, .w = 1.0 };
+  return result;
+}
+
+// element-wise multiplication
+vec4 mult3(vec4 v1, vec4 v2) {
+  vec4 result = { .x = v1.x * v2.x, .y = v1.y * v2.y, .z = v1.z * v2.z, .w = 1.0 };
+  return result;
+}
+
+vec4 div3(vec4 v1, vec4 v2) {
+  vec4 result = { .x = v1.x / v2.x, .y = v1.y / v2.y, .z = v1.z / v2.z, .w = 1.0 };
+  return result;
+}
+
+float min(float a, float b) {
+  if (a < b) {
+    return a;
+  }
+  return b;
+}
+
+float max(float a, float b) {
+  if (a > b) {
+    return a;
+  }
+  return b;
+}
+
+vec4 min3(vec4 v1, vec4 v2) {
+  vec4 result = { .x = min(v1.x, v2.x), .y = min(v1.y, v2.y), .z = min(v1.z, v2.z), .w = 1.0 };
+  return result;
+}
+
+vec4 max3(vec4 v1, vec4 v2) {
+  vec4 result = { .x = max(v1.x, v2.x), .y = max(v1.y, v2.y), .z = max(v1.z, v2.z), .w = 1.0 };
+  return result;
+}
+
+vec4 min3Float(float scalar, vec4 v) {
+  vec4 result = { .x = min(scalar, v.x), .y = min(scalar, v.y), .z = min(scalar, v.z), .w = 1.0 };
+  return result;
+}
+
+vec4 max3Float(float scalar, vec4 v) {
+  vec4 result = { .x = max(scalar, v.x), .y = max(scalar, v.y), .z = max(scalar, v.z), .w = 1.0 };
+  return result;
+}
+
 //
 //  Refresh display
 //
@@ -539,21 +600,14 @@ void display(GLFWwindow* window)
   glEnable(GL_CULL_FACE);
   glEnable(GL_TEXTURE_2D);
 
-  /*
-  //  Set material and lighting interaction (not sure if this matters outside of fixed pipeline)
-  glLightModeli(GL_LIGHT_MODEL_LOCAL_VIEWER, 0);
-  glColorMaterial(GL_FRONT, GL_AMBIENT_AND_DIFFUSE);
-  glEnable(GL_COLOR_MATERIAL); // without this enabled, glColor4fv does not apply, but the materials do
-  glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE); // mix colors
-  */
-
   //  Set view
   ViewGL4(viewMat, th, ph, fov, dim);
   mat4copy(modelViewMat, viewMat);
 
+  float position[] = { 3 * Cos(lTh), 1.0, 3 * Sin(lTh), 1.0 };
+  /*
   // Place the light using shader 0 (simple shader)
   glUseProgram(simpleShader); // simple shader
-  float position[] = { 3 * Cos(lTh), 1.0, 3 * Sin(lTh), 1.0 };
   mat4copy(modelView1, modelViewMat); // replacement for glPushMatrix()
   // translate and scale down the icosahedron
   mat4translate(modelViewMat, position[0], position[1], position[2]);
@@ -562,6 +616,7 @@ void display(GLFWwindow* window)
   SimpleIcosahedron(simpleShader); // represents a point light
   mat4copy(modelViewMat, modelView1); // replacement for glPopMatrix()
   ErrCheck("Icosahedron light");
+  */
 
   // Set the light parameters
   // Note: I don't have any material properties, so color is used as the material property for every type of lighting.
@@ -589,43 +644,148 @@ void display(GLFWwindow* window)
   id = glGetUniformLocation(fireflyShader, "noiseTexture");
   glUniform1i(id, 1); // texture unit 1 (noise)
 
-  
-  /*
-  // set up the fireflies
-  // hold the positions of four fireflies
-  float fireflyPositions[16] = 
-  { 1.0, 1.0, 2.0, 1.0 ,
-   -1.0, 1.0, 1.0, 1.0 ,
-   0.0, 1.0, -2.0, 1.0 ,
-   0.5, 0.5, 0.0, 1.0 };
-
-  // make the fireflies move a bit in a cyclical way
-  for (int i = 0; i < 4; ++i) {
-      float x = fireflyPositions[4 * i + 0];
-      float y = fireflyPositions[4 * i + 1];
-      float phase = x - y; // make the fireflies a bit out of phase with each other in their motion
-      phase = x - phase * phase;
-      phase = fmin(2.0, abs(phase)); // don't have hyperactive fireflies
-      fireflyPositions[4 * i + 0] += 0.3 * Cos(phase * lTh) +-0.1 * fmod(x, 2);
-      fireflyPositions[4 * i + 1] += 0.05 * Cos(10*lTh) * Sin(20*lTh) + 0.2 * Cos(phase*lTh);
-      fireflyPositions[4 * i + 2] += 0.2*(0.5-Sin(phase*lTh));
+  vec4 fireflyPositions[maxFireflies];
+  float fireflyPositionsFloat[maxFireflies * 4];
+  vec4* fireflyPos;
+  if (mode) {
+    // NEW WAY TO CALCULATE FIREFLY POSITIONS (using Boids)
+    ComputeFireflyLocations();
   }
-  */
-
-  // NEW WAY TO CALCULATE FIREFLY POSITIONS (using Boids)
-  ComputeFireflyLocations();
-
+  // copy firefly locations from the shader storage buffer to a C program array
   // unfortunately, the only way to pass the firefly locations as a uniform is to copy shader data to an array on the CPU, since glMapBufferRange data may not be used in OpenGL commands.
-  float fireflyPositions[maxFireflies*4];
   glBindBuffer(GL_SHADER_STORAGE_BUFFER, fireflyPosBuf);
-  vec4* fireflyPos = (vec4*)glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, numFireflies * sizeof(vec4), GL_MAP_READ_BIT);
+  fireflyPos = (vec4*)glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, numFireflies * sizeof(vec4), GL_MAP_READ_BIT);
   for (int i = 0; i < numFireflies; ++i) {
-      fireflyPositions[4 * i + 0] = fireflyPos[i].x;
-      fireflyPositions[4 * i + 1] = fireflyPos[i].y;
-      fireflyPositions[4 * i + 2] = fireflyPos[i].z;
-      fireflyPositions[4 * i + 3] = 1.0;
+    fireflyPositions[i] = fireflyPos[i];
+    fireflyPositionsFloat[4 * i + 0] = fireflyPos[i].x;
+    fireflyPositionsFloat[4 * i + 1] = fireflyPos[i].y;
+    fireflyPositionsFloat[4 * i + 2] = fireflyPos[i].z;
+    fireflyPositionsFloat[4 * i + 3] = 1.0;
   }
   glUnmapBuffer(GL_SHADER_STORAGE_BUFFER); // free up the memory mapping to the firefly locations
+  fireflyPos = 0;
+  if (!mode) {
+    // compute boids on CPU
+    
+    // first, get velocities
+    vec4 fireflyVelocities[maxFireflies];
+    vec4* fireflyVel;
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, fireflyPosBuf);
+    fireflyVel = (vec4*)glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, numFireflies * sizeof(vec4), GL_MAP_READ_BIT);
+    for (int i = 0; i < numFireflies; ++i) {
+      fireflyVelocities[i] = fireflyVel[i];
+    }
+    glUnmapBuffer(GL_SHADER_STORAGE_BUFFER); // free up the memory mapping to the firefly locations
+    fireflyVel = 0;
+
+    const float simulationSpeed = 2.0;
+    float deltaTime = dt; // use global dt
+    float dt = simulationSpeed * deltaTime; // shadow the global dt
+
+    // related to separation (avoiding peers who are too close)
+    const float hostileDistance = 0.05;
+    const float hostileDistanceSquared = hostileDistance * hostileDistance;
+    const float aversion = 0.5; // how much you want to avoid peers. This should be the strongest force if we don't want a super stable flock. We keep it low since we face aversion from multiple peers.
+    const float aversionDecay = 5.0;
+
+    // related to steering toward average heading
+    const float localDistance = 0.5; // how close other members must be in order to be considered "flockmates"
+    const float localDistanceSquared = localDistance * localDistance;
+    const float targetSteeringTime = 1.5; // how many seconds it should take to match the average heading of the flockmates
+    const float minSteerAcceleration = 1.0; // we need this to be larger than min cohesion speed so we focus on steering toward average heading once we are near the flock.
+    const float maxSteerAcceleration = 1.5;
+
+    // related to cohesion
+    const float travelTimeToCenter = 1.0; // how many seconds you would like to take when trying to reach the center
+    const float minCohesionSpeed = 0.5; // units per second
+    const float maxCohesionSpeed = 3.0; // units per second
+
+    // barrier to keep fireflies from escaping the scene
+    const float barrierStrength = 0.01;
+
+    for (int i = 0; i < numFireflies; ++i) {
+      int gid = i;
+      // initial positions
+      vec4 p0 = fireflyPositions[gid];
+      vec4 v0 = fireflyVelocities[gid];
+      float speedLimit = 0.0; // use later with a differnt value
+      float neighbors = 0.0; // use for separation and alignment.
+
+      // https://en.wikipedia.org/wiki/Boids
+      // 1. Separation: Avoid crowding local flockmates
+      vec4 repulsion = { .x = 0.0, .y = 0.0, .z = 0.0, .w = 1.0 };
+      for (int j = 0; j < numFireflies; ++j)
+      {
+        vec4 diff = add3(p0, scale3(-1, fireflyPositions[j])); // subtract pos[j] from p0
+        float dist = dot3(diff, diff);
+        float close = 0.0;
+        if (hostileDistanceSquared <= dist) {
+          close = 1.0;
+        }
+        neighbors += close;
+        float scale = close * (aversion / (aversionDecay * dist + 1.0 - hostileDistanceSquared));
+        repulsion = add3( repulsion, scale3(scale, diff) ); // if you are closer than hostile distance, this number grows larger than aversion
+      }
+
+      // 2. Alignment: Steer toward the average heading of local flockmates
+      vec4 heading = { .x = 0.0, .y = 0.0, .z = 0.0, .w = 1.0 };
+      neighbors = 0.0; // number of neighbors
+      for (int j = 0; j < numFireflies; ++j)
+      {
+        vec4 diff = add3(p0, scale3(-1, fireflyPositions[j])); // subtract pos[i] from p0
+        float dist = dot3(diff, diff);
+        float close = 0.0;
+        if (localDistanceSquared <= dist) {
+          close = 1.0;
+        }
+        neighbors += close;
+        heading = add3(heading, scale3(close, fireflyVelocities[j]));
+      }
+      heading = scale3(1 / neighbors, heading);
+
+      vec4 steeringRequired = add3(heading, scale3(-1,  v0)); // heading - v0
+      vec4 steeringAcceleration = scale3(1 / targetSteeringTime, steeringRequired);
+      float steeringAccelerationMagnitude = sqrt(dot3(steeringAcceleration, steeringAcceleration)); // L2 norm of steeringAcceleration (length)
+      speedLimit = min(steeringAccelerationMagnitude, maxSteerAcceleration) / steeringAccelerationMagnitude;
+      steeringAcceleration = scale3(speedLimit, steeringAcceleration);
+      speedLimit = max(steeringAccelerationMagnitude, minSteerAcceleration) / steeringAccelerationMagnitude;
+      steeringAcceleration = scale3(speedLimit, steeringAcceleration);
+
+      // 3. Cohesion: Calculate center of mass for cohesion
+      vec4 com; // com = center of mass
+      for (int j = 0; j < numFireflies; ++j)
+      {
+          com = add3(com, fireflyPositions[j]);
+      }
+      com = scale3(1 / numFireflies, com);
+      vec4 cohesion = add3(com, scale3(-1, p0)); // com - p0
+      vec4 cohesionVelocity = scale3(1 / travelTimeToCenter, cohesion); // note: this is really an acceleration. It's poorly named.
+      float cohesionSpeed = sqrt(dot3(cohesionVelocity, cohesionVelocity)); // L2 norm (length)
+      speedLimit = min(cohesionSpeed, maxCohesionSpeed) / cohesionSpeed;
+      cohesionVelocity = scale3(speedLimit, cohesionVelocity);
+      speedLimit = max(cohesionSpeed, minCohesionSpeed) / cohesionSpeed;
+      cohesionVelocity = scale3(speedLimit, cohesionVelocity);
+
+      // barrier to prevent excape from scene
+      vec4 barrierDir = { .x = 0.0, .y = 1.5, .z = 0.0, .w = 1.0 };
+      barrierDir = add3(barrierDir, scale3(-1, p0)); // barrierDir = the location above - p0
+      vec4 barrierAcceleration = scale3(barrierStrength, scale3(sqrt(dot3(barrierDir, barrierDir)), barrierDir)); // barrierDir * length(barrierDir) * barrierStrength; this increases the barrier strength as distance increases
+
+      vec4 v = add3(v0, scale3(dt, add3(repulsion, add3(steeringAcceleration, add3(cohesionVelocity, barrierAcceleration)))));
+      vec4 p = add3(p0, scale3(dt, v));
+
+      // save the results into the arrays
+      fireflyPositions[gid] = p;
+      fireflyPositions[gid] = v;
+      fireflyPositionsFloat[4 * gid + 0] = p.x;
+      fireflyPositionsFloat[4 * gid + 1] = p.y;
+      fireflyPositionsFloat[4 * gid + 2] = p.z;
+      fireflyPositionsFloat[4 * gid + 3] = 1.0;
+    }
+
+    // save the contents of the local arrays into the ones used by the compute shader in case we change modes later
+
+  } // end of code to execute if mode is disabled
 
   // use the firefly shader and draw grass lit by fireflies
   glUseProgram(fireflyShader);
@@ -635,7 +795,7 @@ void display(GLFWwindow* window)
   id = glGetUniformLocation(fireflyShader, "fireflyModelView");
   glUniformMatrix4fv(id, 1, 0, fireflyModelViewMat);
   id = glGetUniformLocation(fireflyShader, "fireflies");
-  glUniform4fv(id, numFireflies, fireflyPositions);
+  glUniform4fv(id, numFireflies, fireflyPositionsFloat);
   id = glGetUniformLocation(fireflyShader, "numFireflies");
   glUniform1i(id, numFireflies);
   // lTh is a convenient variable that changes with time. I can use it to oscillate through a portion of the 3D noise map in order to make the fireflies quake.
@@ -647,75 +807,6 @@ void display(GLFWwindow* window)
   PassMatricesToShader(fireflyShader, viewMat, modelViewMat, projectionMat);
   ErrCheck("before base plate");
   DrawBasePlate(fireflyShader, grassTexture);
-  
-
-  // make a lawn of 6 by 10 blades of grass per patch. Without scaling, a patch takes up a [-1, 1] area.
-  // place the blades 0.3 apart horizontally and 0.2 apart along z
-  // if the number of grass patches changed, then destroy the existing grassHeights array and create a new one
-  if (numPatches != oldNumPatches) {
-    oldNumPatches = numPatches;
-    if (grassHeights) {
-      free(grassHeights);
-    }
-    if (grassDataMain) {
-        free(grassDataMain);
-    }
-    // create the buffers
-    int numBlades = 10*numPatches*6*numPatches;
-    printf("Number of blades: %d\n", numBlades);
-    grassHeights = malloc(numBlades*sizeof(double));
-    // initialze the random heights
-    for (int i = 0; i < numBlades; i++) {
-      grassHeights[i] = 0.1 * ((rand() % 5) + 8); // range of heights is [0.8, 1.2]
-    }
-    // create the grass vao and vbo
-    int grassVboSize = getSizeOfGrassVBO(numBlades);
-    printf("Allocating grass VBO of size %d\n", grassVboSize);
-    grassDataMain = malloc(grassVboSize);
-    copyGrassData(grassDataMain, numBlades);
-    // adjust grass heights from main program
-    int grassVertices = getNumVerticesPerGrass();
-    float* seek = grassDataMain + 1; // start at the first y value
-    for (int i = 0; i < numBlades; i++) {
-      for (int j = 0; j < grassVertices; j++) {
-        *(seek) *= grassHeights[i];
-        seek += 13; // skip 13 floats since that is how many attributes exist per vertex
-      }
-    }
-    InitGrassVBO(grassDataMain, grassVboSize, &grassVbo);
-    InitGrassVAO(fireflyShader, &grassVbo, &grassVao);
-    ErrCheck("grass main");
-  }
-
-
-  // Now draw the lawn
-
-  glUseProgram(fireflyShader);
-  //  Bind attribute arrays using VAO (VAO knows VBO to use)
-  glBindVertexArray(grassVao);
-  int grassVertices = getNumVerticesPerGrass(); // number of vertices per blade of grass
-  int drawStart = 0; // offset to draw from in glDrawArrays()
-
-  mat4copy(modelView1, modelViewMat); // replacement for glPushMatrix()
-  mat4translate(modelViewMat, 0.0, 0.0, -numPatches); // start at the back row
-  for(int i = 0; i < 10*numPatches; i++) {
-    mat4copy(modelView2, modelViewMat); // push matrix
-    mat4translate(modelViewMat, -numPatches, 0.0, 0.0); // start of row (left side)
-    // travserse the row
-    for (int j = 0; j < 6*numPatches; j++) {
-      PassMatricesToShader(fireflyShader, viewMat, modelViewMat, projectionMat);
-      glDrawArrays(GL_TRIANGLES, drawStart, grassVertices);
-      mat4translate(modelViewMat, 0.30, 0.0, 0.0);
-      drawStart += grassVertices;
-    }
-    mat4copy(modelViewMat, modelView2); // replacement for glPopMatrix()
-    mat4translate(modelViewMat, 0.0, 0.0, 0.2); // change the row
-  }
-  mat4copy(modelViewMat, modelView1); // replacement for glPopMatrix()
-  PassMatricesToShader(fireflyShader, viewMat, modelViewMat, projectionMat);
-
-  //  Release attribute arrays
-  glBindVertexArray(0);
 
   // Draw firefly sparks
   DrawFirefliesAndSparks(fireflyPositions, numSparks, numFireflies);
@@ -761,7 +852,7 @@ void key(GLFWwindow* window,int key,int scancode,int action,int mods)
    }
    //  Switch shaders
    else if (key == GLFW_KEY_M)
-       mode = (mode + 1) % NUM_SHADERS;
+       mode = 1 - mode;
    //  Switch objects
    else if (key == GLFW_KEY_O)
        obj = 1 - obj;
@@ -839,7 +930,7 @@ int CreateShaderProgCompute(char* file)
 int main(int argc,char* argv[])
 {
   //  Initialize GLFW
-  GLFWwindow* window = InitWindow("John Salame Final Project",0,600,600,&reshape,&key);
+  GLFWwindow* window = InitWindow("John Salame HW10 - Compute Shader",0,600,600,&reshape,&key);
 
   //  Load shader
   simpleShader = CreateShaderProg("simple.vert", "simple.frag");

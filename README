@@ -1,21 +1,9 @@
-# Advanced Computer Graphics Final Project
+# Advanced Computer Graphics HW 10 - Compute Shader
 John Salame
 CSCI 5239 Spring 2023
 
 ## Time taken
 Final Project:
-After turning in homework 9, I worked for 8 more hours to fix the bugs with firefly rendering and spark positions.  
-* I also attempted to improve the particle lifecycle by re-initializing the particle (reincarnating) after its lifetime reaches the lifespan.
-* Figured out how the Perlin Noise works (x, y, z, w are values that become more fine-grained with double the frequency and half the amplitude as the previous dimension)
-* Figured out that Perlin Noise sucks for determining my grass heights; the heights don't vary much. Maybe the spacing of the grass correlates with some frequency.
-* * Reverted back to randomizing grass heights at the time the VBO is created.
-
-I then spent 7 more hours on the assignment.
-* Made the velocities of the sparks more extreme by creating the extremeRand function in spark.cs.
-* I spent a long time trying to derive a closed form for the spark trajectory including gravity.
-* * I could not figure it out with calculus. Maybe I kept making mistakes. I decided to just use the method Vlakkies mentioned in class. I'm not sure if it's completely correct or an approximation.
-* I added inverted gravity to the spark particles so they rise up like embers.
-
 Part Related to Compute Shader (Boids) (6.5 hr total):
 * 4 hr modifying my program to allow for swarms of fireflies to be created and contribute to lighting.
 * 1 hr adding cohesion and steering toward average heading (it's too cohesive at this point, converges to uniform flock too quickly)
@@ -23,9 +11,6 @@ Part Related to Compute Shader (Boids) (6.5 hr total):
 * * I also added a bounding box of sorts to prevent the fireflies from flying off-screen. It gently pulls them toward (0, 1.5, 0).
 * The swarm looks pretty lame. I will add some noise to the velocity at the very least. It should make the animation more interesting.
 * Change aversion to 0 if you want something more exciting that looks more like typical Boids.
-
-Final Project Total:
-22.5 hours
 
 
 ### Description

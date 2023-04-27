@@ -18,7 +18,7 @@ uniform float deltaTime;
 uniform int numFireflies;
 
 // Constants
-const float simulationSpeed = 1.0;
+const float simulationSpeed = 2.0;
 
 // related to separation (avoiding peers who are too close)
 const float hostileDistance = 0.05;
@@ -88,7 +88,7 @@ void main()
   steeringAcceleration *= speedLimit;
 
   // 3. Cohesion: Calculate center of mass for cohesion
-  vec3 com; // com = center of mass
+  vec3 com = vec3(0.0); // com = center of mass
   for (int i = 0; i < numFireflies; ++i)
   {
     com += pos[i].xyz;
