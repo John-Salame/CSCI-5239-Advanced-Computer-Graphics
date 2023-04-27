@@ -14,7 +14,7 @@
 #include <stdlib.h>
 #include "CSCIx239.h"
 #include "grass.h"
-int mode=0;    //  Enable boids compute shader
+int mode=1;    //  Enable boids compute shader
 int th=0,ph=0; //  View angles
 int fov=57;    //  Field of view (for perspective)
 int tex=0;     //  Texture
@@ -657,26 +657,22 @@ void display(GLFWwindow* window)
   fireflyPos = (vec4*)glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, numFireflies * sizeof(vec4), GL_MAP_READ_BIT);
   for (int i = 0; i < numFireflies; ++i) {
     fireflyPositions[i] = fireflyPos[i];
-    fireflyPositionsFloat[4 * i + 0] = fireflyPos[i].x;
-    fireflyPositionsFloat[4 * i + 1] = fireflyPos[i].y;
-    fireflyPositionsFloat[4 * i + 2] = fireflyPos[i].z;
-    fireflyPositionsFloat[4 * i + 3] = 1.0;
   }
   glUnmapBuffer(GL_SHADER_STORAGE_BUFFER); // free up the memory mapping to the firefly locations
-  fireflyPos = 0;
+  fireflyPos = NULL;
   if (!mode) {
     // compute boids on CPU
     
     // first, get velocities
     vec4 fireflyVelocities[maxFireflies];
     vec4* fireflyVel;
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, fireflyPosBuf);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, fireflyVelBuf);
     fireflyVel = (vec4*)glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, numFireflies * sizeof(vec4), GL_MAP_READ_BIT);
     for (int i = 0; i < numFireflies; ++i) {
       fireflyVelocities[i] = fireflyVel[i];
     }
     glUnmapBuffer(GL_SHADER_STORAGE_BUFFER); // free up the memory mapping to the firefly locations
-    fireflyVel = 0;
+    fireflyVel = NULL;
 
     const float simulationSpeed = 2.0;
     float deltaTime = dt; // use global dt
@@ -784,7 +780,21 @@ void display(GLFWwindow* window)
     }
 
     // save the contents of the local arrays into the ones used by the compute shader in case we change modes later
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, fireflyPosBuf);
+    fireflyPos = (vec4*)glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, numFireflies * sizeof(vec4), GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT);
+    for (int i = 0; i < numFireflies; ++i)
+    {
+        fireflyPos[i] = fireflyPositions[i];
+    }
+    glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
 
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, fireflyVelBuf);
+    fireflyVel = (vec4*)glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, numFireflies * sizeof(vec4), GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT);
+    for (int i = 0; i < numFireflies; i++)
+    {
+        fireflyVel[i] = fireflyVelocities[i];
+    }
+    glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
   } // end of code to execute if mode is disabled
 
   // use the firefly shader and draw grass lit by fireflies

@@ -4,7 +4,7 @@ CSCI 5239 Spring 2023
 
 ## Time taken
 Final Project:
-Part Related to Compute Shader (Boids) (6.5 hr total):
+Part Related to Compute Shader (Boids) (12.5 hr total):
 * 4 hr modifying my program to allow for swarms of fireflies to be created and contribute to lighting.
 * 1 hr adding cohesion and steering toward average heading (it's too cohesive at this point, converges to uniform flock too quickly)
 * 1.5 hr messing with the settings trying and failing to get a chaotic swarm. It is still very cohesive. Maybe it would require different equations.
@@ -12,9 +12,13 @@ Part Related to Compute Shader (Boids) (6.5 hr total):
 * The swarm looks pretty lame. I will add some noise to the velocity at the very least. It should make the animation more interesting.
 * Change aversion to 0 if you want something more exciting that looks more like typical Boids.
 
+* 6 hours trying to get Boids working in CPU. I did not end up getting it working. It also broke the coloration of the compute-shader based scene.
+* * Create functions to abstract away vector math.
+* * CPU does not move the fireflies, they just stay in place.
+* * Change that, causing the fireflies to simply disappear for some reason.
 
 ### Description
-I attempted to make little particles that explode away from a firefly. I planned to have the particles periodically disappear and respawn but did not have time to implement that. The particles also do not follow the fireflies for some reason.
+The scene starts out using the compute shader for Boids. Press m to break the scene by attempting to compute Boids in CPU. It does not work.
 
 
 ## Interaction
