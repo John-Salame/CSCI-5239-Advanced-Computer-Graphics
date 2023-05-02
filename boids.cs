@@ -18,24 +18,24 @@ uniform float deltaTime;
 uniform int numFireflies;
 
 // Constants
-const float simulationSpeed = 1.0;
+const float simulationSpeed = 2.0;
 
 // related to separation (avoiding peers who are too close)
 const float hostileDistance = 0.05;
 const float hostileDistanceSquared = hostileDistance * hostileDistance;
 const float aversion = 0.5; // how much you want to avoid peers. This should be the strongest force if we don't want a super stable flock. We keep it low since we face aversion from multiple peers.
-const float aversionDecay = 5.0;
+const float aversionDecay = 1.0; // 5.0;
 
 // related to steering toward average heading
-const float localDistance = 0.5; // how close other members must be in order to be considered "flockmates"
+const float localDistance = 0.2; // how close other members must be in order to be considered "flockmates"
 const float localDistanceSquared = localDistance * localDistance;
 const float targetSteeringTime = 1.5; // how many seconds it should take to match the average heading of the flockmates
-const float minSteerAcceleration = 1.0; // we need this to be larger than min cohesion speed so we focus on steering toward average heading once we are near the flock.
+const float minSteerAcceleration = 0.0; // 1.0; // we need this to be larger than min cohesion speed so we focus on steering toward average heading once we are near the flock.
 const float maxSteerAcceleration = 1.5;
 
 // related to cohesion
 const float travelTimeToCenter = 1.0; // how many seconds you would like to take when trying to reach the center
-const float minCohesionSpeed = 0.5; // units per second
+const float minCohesionSpeed = 0.0; //0.5; // units per second
 const float maxCohesionSpeed = 3.0; // units per second
 
 // barrier to keep fireflies from escaping the scene
@@ -51,7 +51,7 @@ void main()
   vec3 p0 = pos[gid].xyz;
   vec3 v0 = vel[gid].xyz;
   float speedLimit = 0.0; // use later with a differnt value
-  float neighbors = 0.0; // use for separation and alignment.
+  float neighbors = 1.0; // use for separation and alignment. Never divide by 0
 
   // https://en.wikipedia.org/wiki/Boids
   // 1. Separation: Avoid crowding local flockmates
@@ -60,7 +60,7 @@ void main()
   {
     vec3 diff = p0 - pos[i].xyz;
     float dist = dot(diff, diff);
-    float close = step(hostileDistanceSquared, dist); // 1.0 if you are nearby (local flockmates)
+    float close = step(dist, hostileDistanceSquared); // 1.0 if you are nearby (local flockmates)
     neighbors += close;
     repulsion += diff * close * (aversion / (aversionDecay * dist + 1.0 - hostileDistanceSquared)); // if you are closer than hostile distance, this number grows larger than aversion
   }
@@ -69,12 +69,12 @@ void main()
 
   // 2. Alignment: Steer toward the average heading of local flockmates
   vec3 heading = vec3(0.0);
-  neighbors = 0; // number of neighbors
+  neighbors = 1.0; // number of neighbors
   for (int i = 0; i < numFireflies; ++i)
   {
     vec3 diff = p0 - pos[i].xyz;
     float dist = dot(diff, diff);
-    float close = step(localDistanceSquared, dist); // 1.0 if you are nearby (local flockmates)
+    float close = step(dist, localDistanceSquared); // 1.0 if you are nearby (local flockmates)
     neighbors += close;
     heading += vel[i].xyz * close;
   }
@@ -88,12 +88,17 @@ void main()
   steeringAcceleration *= speedLimit;
 
   // 3. Cohesion: Calculate center of mass for cohesion
-  vec3 com; // com = center of mass
+  vec3 com; // com = center of mass in the local cluster
+  neighbors = 1.0;
   for (int i = 0; i < numFireflies; ++i)
   {
-    com += pos[i].xyz;
+    vec3 diff = p0 - pos[i].xyz;
+    float dist = dot(diff, diff);
+    float close = step(dist, localDistanceSquared); // 1.0 if you are nearby (local flockmates)
+    neighbors += close;
+    com += pos[i].xyz * close;
   }
-  com /= numFireflies;
+  com /= neighbors;
   vec3 cohesion = com - p0;
   vec3 cohesionVelocity = cohesion / travelTimeToCenter; // note: this is really an acceleration. It's poorly named.
   float cohesionSpeed = length(cohesionVelocity);

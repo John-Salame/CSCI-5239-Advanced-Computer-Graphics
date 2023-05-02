@@ -74,8 +74,8 @@ float lifespan = 3.0; // lifespan in seconds (maximum lifetime) of spark particl
 int numSparks = 0; // calculate in main method
 const int sparksPerFirefly = 5;
 const int sparksPerWorkGroup = 100; // must be a multiple of sparksPerFirefly.
-const int firefliesPerSwarm = 10;
-const int numFireflySwarms = 6; // initial number of swarms (they may merge later on)
+const int firefliesPerSwarm = 20;
+const int numFireflySwarms = 4; // initial number of swarms (they may merge later on)
 int numFireflies = 0; // calculate in InitFireflies.
 const int maxFireflies = 100;
 double oldTime;
