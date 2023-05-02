@@ -21,9 +21,9 @@ uniform int numFireflies;
 const float simulationSpeed = 2.0;
 
 // related to separation (avoiding peers who are too close)
-const float hostileDistance = 0.05;
+const float hostileDistance = 0.1; //0.05
 const float hostileDistanceSquared = hostileDistance * hostileDistance;
-const float aversion = 0.5; // how much you want to avoid peers. This should be the strongest force if we don't want a super stable flock. We keep it low since we face aversion from multiple peers.
+const float aversion = 1.0; // how much you want to avoid peers. This should be the strongest force if we don't want a super stable flock. We keep it low since we face aversion from multiple peers.
 const float aversionDecay = 1.0; // 5.0;
 
 // related to steering toward average heading
@@ -88,7 +88,7 @@ void main()
   steeringAcceleration *= speedLimit;
 
   // 3. Cohesion: Calculate center of mass for cohesion
-  vec3 com; // com = center of mass in the local cluster
+  vec3 com = vec3(0.0); // com = center of mass in the local cluster
   neighbors = 1.0;
   for (int i = 0; i < numFireflies; ++i)
   {
