@@ -27,14 +27,14 @@ const float aversion = 1.0; // how much you want to avoid peers. This should be 
 const float aversionDecay = 1.0; // 5.0;
 
 // related to steering toward average heading
-const float localDistance = 0.5; // how close other members must be in order to be considered "flockmates"
+const float localDistance = 0.3; // how close other members must be in order to be considered "flockmates"
 const float localDistanceSquared = localDistance * localDistance;
 const float targetSteeringTime = 1.5; // how many seconds it should take to match the average heading of the flockmates
 const float minSteerAcceleration = 0.2; // 1.0; // we need this to be larger than min cohesion speed so we focus on steering toward average heading once we are near the flock.
 const float maxSteerAcceleration = 1.5;
 
 // related to cohesion
-const float cohesionLocalDistance = 0.7; // 0.5
+const float cohesionLocalDistance = 0.5; // 0.5
 const float cohesionLocalDistanceSquared = cohesionLocalDistance * cohesionLocalDistance;
 const float travelTimeToCenter = 1.0; // how many seconds you would like to take when trying to reach the center
 const float minCohesionSpeed = 0.0; //0.5; // units per second
@@ -42,6 +42,7 @@ const float maxCohesionSpeed = 3.0; // units per second
 
 // barrier to keep fireflies from escaping the scene
 const float barrierEdge = 4.0; // radius of the "bounding box" (or sphere)
+const float barrierLowerEdge = 0.7; // lowest height the fireflies can go to
 const float barrierStrength = 1.0; // formerly 0.01
 
 
@@ -120,7 +121,7 @@ void main()
   float applyBarrierForce = step(barrierEdge, length(barrierDir));
   vec3 barrierAcceleration = applyBarrierForce * normalize(barrierDir) * barrierStrength;
   // apply upward acceleration if you are too low
-  float riseUp = step(p0.y, 0.5);
+  float riseUp = step(p0.y, barrierLowerEdge);
   barrierAcceleration += riseUp * vec3(0.0, 1.0, 0.0);
 
   vec3 v = v0 + (repulsion + steeringAcceleration + cohesionVelocity + barrierAcceleration) * dt;
