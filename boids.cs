@@ -78,7 +78,9 @@ void main()
     float close = step(dist, 2.0 * hostileDistanceSquared); // 1.0 if you are nearby (local flockmates)
     neighbors += close;
     // this time I'll try a non-local aversion with strength <aversionStrength> at the hostile distance
-    repulsion += normalize(diff) * aversionStrength * max(0.0, 1.0 + aversionDecay * (hostileDistanceSquared - dist) / hostileDistanceSquared);
+    if (dist > 0.0) {
+      repulsion += normalize(diff) * aversionStrength * max(0.0, 1.0 + aversionDecay * (hostileDistanceSquared - dist) / hostileDistanceSquared);
+    }
   }
   repulsion /= neighbors;
 
@@ -118,8 +120,11 @@ void main()
 
   // barrier to prevent excape from scene
   vec3 barrierDir = vec3(0, 1.5, 0) - p0;
-  float applyBarrierForce = step(barrierEdge, length(barrierDir));
-  vec3 barrierAcceleration = applyBarrierForce * normalize(barrierDir) * barrierStrength;
+  // use if statement to prevent normalizing zero vector
+  vec3 barrierAcceleration = vec3(0.0);
+  if (length(barrierDir) >= barrierEdge) {
+    barrierAcceleration = normalize(barrierDir) * barrierStrength;
+  }
   // apply upward acceleration if you are too low
   float riseUp = step(p0.y, barrierLowerEdge);
   barrierAcceleration += riseUp * vec3(0.0, 1.0, 0.0);
