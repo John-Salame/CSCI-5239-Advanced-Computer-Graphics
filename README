@@ -33,15 +33,20 @@ Part Related to Compute Shader (Boids) (10.5 hr total):
 * 1 hr fix aversion and fine-tune the firefly swarms to look really nice
 
 ### Description
-I attempted to make little particles that explode away from a firefly. I planned to have the particles periodically disappear and respawn but did not have time to implement that. The particles also do not follow the fireflies for some reason.
-
+I implemented the boids algorithm (probably with some of my own modifications since I didn't look up formulas) on a swarm of fireflies.  
+The swarms evolve over time. Swarms form based on proximity. Fireflies shuffle around a little bit when there is an "impact" or joining of swarms due to aversion.  
+Fireflies tend to move in the average direction of the local swarm, making the motion of the swarm uniform, with small variation when there are "collisions."  
+Cohesion causes fireflies within a certain distance to be drawn close to one another. Cohesion makes the swarms more compact and allows multiple swarms to merge into larger swarms.  
+As the swarms grow larger, they also tend to grow more spherical. This is due to the aversion property and the cohesion property working together.  
+The fireflies emit spark particles, though these don't really contribute much to the scene. I thought about making the particles contribute lighting just like the fireflies do, but it might make the program too slow to have hundreds of point lights.  
+The program uses compute shaders for both boids and for the spark particle locations. The shader storage arrays can then be converted into vertex arrays to use in render shaders.
 
 ## Interaction
-Press the number 0 to replay the particle effect with new initial values or reset the view of the scene.
-Press P to toggle projection mode (orthogonal or perspective).  
-Use arrow keys to make the camera orbit the scene.  
+Press the number 0 to reset the scene by placing the fireflies in random positions. This also resets the camera to the original view.
+Press PG UP / PG DOWN or the square brackets [ ] to zoom in or out.  
 Press +/- to add or remove patches of grass.  
-Press PG UP / PG DOWN or the square brackets to zoom in or out.
+Use arrow keys to make the camera orbit the scene.  
+Press P to toggle projection mode (orthogonal or perspective).  
 
 
 ### Key bindings
