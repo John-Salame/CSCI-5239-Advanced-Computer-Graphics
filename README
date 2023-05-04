@@ -3,7 +3,11 @@ John Salame
 CSCI 5239 Spring 2023
 
 ## Time taken
-Final Project:
+
+Final Project Total:
+25.5 hours
+
+Time Breakdown:
 After turning in homework 9, I worked for 8 more hours to fix the bugs with firefly rendering and spark positions.  
 * I also attempted to improve the particle lifecycle by re-initializing the particle (reincarnating) after its lifetime reaches the lifespan.
 * Figured out how the Perlin Noise works (x, y, z, w are values that become more fine-grained with double the frequency and half the amplitude as the previous dimension)
@@ -21,12 +25,9 @@ Part Related to Compute Shader (Boids) (6.5 hr total):
 * 1 hr adding cohesion and steering toward average heading (it's too cohesive at this point, converges to uniform flock too quickly)
 * 1.5 hr messing with the settings trying and failing to get a chaotic swarm. It is still very cohesive. Maybe it would require different equations.
 * * I also added a bounding box of sorts to prevent the fireflies from flying off-screen. It gently pulls them toward (0, 1.5, 0).
-* The swarm looks pretty lame. I will add some noise to the velocity at the very least. It should make the animation more interesting.
-* Change aversion to 0 if you want something more exciting that looks more like typical Boids.
-
-Final Project Total:
-22.5 hours
-
+* * The swarm looks pretty lame. I will add some noise to the velocity at the very least. It should make the animation more interesting.
+* * Change aversion to 0 if you want something more exciting that looks more like typical Boids.
+* 3 hr fix bugs in boids algorithm and try to make the swarm behavior look nicer
 
 ### Description
 I attempted to make little particles that explode away from a firefly. I planned to have the particles periodically disappear and respawn but did not have time to implement that. The particles also do not follow the fireflies for some reason.

@@ -28,7 +28,7 @@ int width = 0;
 int height = 0;
 
 // grass stuff
-int numPatches = 3;
+int numPatches = 4;
 int oldNumPatches = 0;
 double* grassHeights = 0; // will be a 2d array of grass heights
 float* grassDataMain = 0;
@@ -839,7 +839,7 @@ int CreateShaderProgCompute(char* file)
 int main(int argc,char* argv[])
 {
   //  Initialize GLFW
-  GLFWwindow* window = InitWindow("John Salame Final Project",0,600,600,&reshape,&key);
+  GLFWwindow* window = InitWindow("John Salame Final Project",1,600,600,&reshape,&key);
 
   //  Load shader
   simpleShader = CreateShaderProg("simple.vert", "simple.frag");
