@@ -21,10 +21,10 @@ uniform int numFireflies;
 const float simulationSpeed = 2.0;
 
 // related to separation (avoiding peers who are too close)
-const float hostileDistance = 0.1; //0.1
+const float hostileDistance = 0.2; // change to 0.1 for tighter clusters, more hivemind feel
 const float hostileDistanceSquared = hostileDistance * hostileDistance;
-const float aversion = 1.0; // how much you want to avoid peers. This should be the strongest force if we don't want a super stable flock. We keep it low since we face aversion from multiple peers.
-const float aversionDecay = 1.0; // 5.0;
+const float aversionStrength = 2.0; // how much you want to avoid peers. This should be the strongest force if we don't want a super stable flock.
+const float aversionDecay = 2.5; // larger aversionDecay increases the possible force closer than hostile distance and shortens the distance where there is no aversion; seems to make the group more malleable in shape.
 
 // related to steering toward average heading
 const float localDistance = 0.3; // how close other members must be in order to be considered "flockmates"
@@ -74,13 +74,13 @@ void main()
   for (int i = 0; i < numFireflies; ++i)
   {
     vec3 diff = p0 - pos[i].xyz;
-    float dist = dot(diff, diff);
-    float close = step(dist, hostileDistanceSquared); // 1.0 if you are nearby (local flockmates)
+    float dist = dot(diff, diff); // this is actually the squared distance
+    float close = step(dist, 2.0 * hostileDistanceSquared); // 1.0 if you are nearby (local flockmates)
     neighbors += close;
-    repulsion += diff * close * (aversion / (aversionDecay * dist + 1.0 - hostileDistanceSquared)); // if you are closer than hostile distance, this number grows larger than aversion
+    // this time I'll try a non-local aversion with strength <aversionStrength> at the hostile distance
+    repulsion += normalize(diff) * aversionStrength * max(0.0, 1.0 + aversionDecay * (hostileDistanceSquared - dist) / hostileDistanceSquared);
   }
-  // not sure if I should average the repulsion or not. If I don't, it could get out of hand fast!
-  // repulsion /= neighbors;
+  repulsion /= neighbors;
 
   // 2. Alignment: Steer toward the average heading of local flockmates
   vec3 heading = vec3(0.0);
