@@ -3,4 +3,6 @@
 *.a
 hw*
 !hw*.c
+final
+final.exe
 

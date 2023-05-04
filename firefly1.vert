@@ -19,7 +19,8 @@ uniform vec4 Position;
 
 // where the modelViewMatrix of the lights is and the relative positions to that matrix
 uniform mat4 fireflyModelView;
-uniform vec4[4] fireflies; // array of firefly positions
+uniform vec4[100] fireflies; // array of firefly positions (the size here is the maximum I will allow)
+uniform int numFireflies;
 uniform float t;
 
 // change the height of anything which has non-zero y value
@@ -86,8 +87,8 @@ void main() {
   vec4 pos = ModelViewMatrix * Vertex;
   vec4 color = phong(pos);
   // color grass more yellow if close to a firefly
-  for(int i = 0; i < 4; i++) {
-    color += applyFireflyLight(pos, fireflies[i], 1.0);
+  for(int i = 0; i < numFireflies; i++) {
+    color += applyFireflyLight(pos, fireflies[i], 10.0 / numFireflies);
   }
   gl_Position = ModelViewProjectionMatrix * Vertex;
   FrontColor = color;

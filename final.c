@@ -1,7 +1,7 @@
 /*
  * John Salame
  * CSCI 5239 Advanced Computer Graphics
- * Homework 9
+ * Final Project
  *
  *  Key bindings:
  *  m          Toggle shader
@@ -24,12 +24,11 @@ int obj=1;     //  Object
 float asp=1;   //  Aspect ratio
 float dim=3;   //  Size of world
 float lTh = 0.0; // theta for calculating light position
-// const char* text[NUM_SHADERS] = {"Blur Filter","Prewitt Filter"};
 int width = 0;
 int height = 0;
 
 // grass stuff
-int numPatches = 3;
+int numPatches = 4;
 int oldNumPatches = 0;
 double* grassHeights = 0; // will be a 2d array of grass heights
 float* grassDataMain = 0;
@@ -56,6 +55,7 @@ unsigned int fireflyShader = 0;
 unsigned int textureShader = 0;
 unsigned int particleShader = 0;
 unsigned int computeShader = 0;
+unsigned int boidsComputeShader = 0;
 unsigned int canvasVbo = 0;
 unsigned int canvasVao = 0;
 
@@ -64,14 +64,20 @@ unsigned int noiseTexture = 0;
 
 // HW 9 - compute shader
 int nw, ng, maxParticles; //  Work group size and count
+unsigned int fireflyPosBuf = 0;
+unsigned int fireflyVelBuf = 0;
 unsigned int posbuf = 0; //  Position buffer
 unsigned int velbuf = 0; //  Velocity buffer
 unsigned int lifetimebuf = 0; // lifetime of each individual particle
 unsigned int colbuf; //  Color buffer
-float minLifetime = 0.5; // how long it takes for the particle to appear
-float lifespan = 3.0; // lifespan in seconds (maximum lifetime)
-int numSparks = 0;
-int numFireflies = 4;
+float lifespan = 3.0; // lifespan in seconds (maximum lifetime) of spark particle
+int numSparks = 0; // calculate in main method
+const int sparksPerFirefly = 5;
+const int sparksPerWorkGroup = 100; // must be a multiple of sparksPerFirefly.
+const int firefliesPerSwarm = 20;
+const int numFireflySwarms = 4; // initial number of swarms (they may merge later on)
+int numFireflies = 0; // calculate in InitFireflies.
+const int maxFireflies = 100;
 double oldTime;
 double currentTime;
 float dt; // delta time, used for aging the lifetime
@@ -231,26 +237,99 @@ static float frand(float min, float max)
     return rand() * (max - min) / RAND_MAX + min;
 }
 
+void ResetFireflies(int firefliesPerSwarm, int numFireflySwarms, int numFireflies) {
+  // I have no clue what would happen if numFireflies changes value due to having too many swarms -> too many work groups
+  vec4* pos, * vel;
+
+  // create swarms with random initial positions
+  glBindBuffer(GL_SHADER_STORAGE_BUFFER, fireflyPosBuf);
+  pos = (vec4*)glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, numFireflies * sizeof(vec4), GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT);
+  for (int i = 0; i < numFireflySwarms; ++i)
+  {
+    int swarmIndex = i * firefliesPerSwarm;
+    vec4 swarmCenter;
+    swarmCenter.x = frand(-2.5, 2.5);
+    swarmCenter.y = frand(1.0, 1.5);
+    swarmCenter.z = frand(-2.5, 2.5);
+    for (int j = 0; j < firefliesPerSwarm; ++j) {
+      pos[swarmIndex + j].x = swarmCenter.x + frand(-0.3, 0.3);
+      pos[swarmIndex + j].y = swarmCenter.y + frand(-0.3, 0.3);
+      pos[swarmIndex + j].z = swarmCenter.z + frand(-0.3, 0.3);
+      pos[swarmIndex + j].w = 1.0;
+    }
+  }
+  glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
+
+  // random velocities
+  glBindBuffer(GL_SHADER_STORAGE_BUFFER, fireflyVelBuf);
+  vel = (vec4*)glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, numFireflies * sizeof(vec4), GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT);
+  for (int i = 0; i < numFireflies; i++)
+  {
+    vel[i].x = frand(-1.5, 1.5);
+    vel[i].y = frand(-0.3, 0.3);
+    vel[i].z = frand(-1.5, 1.5);
+    vel[i].w = 1.0;
+  }
+  glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
+}
+
+// prepare the compute shader and storage buffers
+// Adapted from Example 19
+int InitFireflies(int firefliesPerSwarm, int numFireflySwarms) {
+  numFireflies = firefliesPerSwarm * numFireflySwarms;
+  if (numFireflies > maxParticles) {
+    numFireflies = maxParticles;
+  }
+
+  //  Initialize position buffer
+  glGenBuffers(1, &fireflyPosBuf);
+  glBindBuffer(GL_SHADER_STORAGE_BUFFER, fireflyPosBuf);
+  glBufferData(GL_SHADER_STORAGE_BUFFER, numFireflies * sizeof(vec4), NULL, GL_STATIC_DRAW);
+
+  //  Initialize velocity buffer
+  glGenBuffers(1, &fireflyVelBuf);
+  glBindBuffer(GL_SHADER_STORAGE_BUFFER, fireflyVelBuf);
+  glBufferData(GL_SHADER_STORAGE_BUFFER, numFireflies * sizeof(vec4), NULL, GL_STATIC_DRAW);
+
+  // provide random values to the buffers and return the number of particles the compute shader will handle
+  ResetFireflies(firefliesPerSwarm, numFireflySwarms, numFireflies);
+  return numFireflies; // not really necessary, but make it more clear we're setting the value in this function.
+}
+
+void ComputeFireflyLocations() {
+  // Set buffer base
+  glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, fireflyPosBuf);
+  glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, fireflyVelBuf);
+
+  unsigned int currentShader = boidsComputeShader;
+  //  Launch compute shader
+  glUseProgram(currentShader);
+  id = glGetUniformLocation(currentShader, "deltaTime");
+  glUniform1f(id, dt);
+  id = glGetUniformLocation(currentShader, "numFireflies");
+  glUniform1i(id, numFireflies);
+  /*
+  id = glGetUniformLocation(currentShader, "t");
+  glUniform1f(id, (float)currentTime);
+  */
+  glDispatchCompute(ceil(1.0 * numFireflies / sparksPerWorkGroup), 1, 1); // compensate for inability to use extension on my computer
+
+  //  Wait for compute shader
+  glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+  ErrCheck("calculate firefly positions (boids shader)");
+}
+
 // create new random values and place them in shader storage buffers using memory mapping
 // Adapted from Example 19
-int ResetSparks(int numSparks, float fireflyColors[]) {
+void ResetSparks(int numSparks, float fireflyColors[]) {
   vec4* pos, * vel, *col;
   float* lifetime;
-
-  if (numSparks > maxParticles) {
-    numSparks = maxParticles;
-  }
 
   // random initial positions very close to the firefly
   glBindBuffer(GL_SHADER_STORAGE_BUFFER, posbuf);
   pos = (vec4*)glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, numSparks * sizeof(vec4), GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT);
   for (int i = 0; i < numSparks; i++)
   {
-    /*
-    pos[i].x = frand(-0.05, 0.05);
-    pos[i].y = frand(-0.05, 0.05);
-    pos[i].z = frand(-0.05, 0.05);
-    */
     pos[i].x = pos[i].y = pos[i].z = 0.0;
     pos[i].w = 1.0;
   }
@@ -261,13 +340,8 @@ int ResetSparks(int numSparks, float fireflyColors[]) {
   vel = (vec4*)glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, numSparks * sizeof(vec4), GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT);
   for (int i = 0; i < numSparks; i++)
   {
-    /*
-    vel[i].x = frand(-0.3, 0.3);
-    vel[i].y = frand(-0.2, 0.4);
-    vel[i].z = frand(-0.3, 0.3);
-    */
     vel[i].x = vel[i].y = vel[i].z = 0.0;
-    vel[i].w = 1;
+    vel[i].w = 1.0;
   }
   glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
 
@@ -283,28 +357,21 @@ int ResetSparks(int numSparks, float fireflyColors[]) {
   }
   glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
 
-  // every particle starts with a lifetime between minLifetime and lifespan (max lifetime)
+  // every particle starts with a lifetime between 0.0 and lifespan (max lifetime)
   glBindBuffer(GL_SHADER_STORAGE_BUFFER, lifetimebuf);
   lifetime = (float*)glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, numSparks * sizeof(float), GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT);
   for (int i = 0; i < numSparks; i++) {
     lifetime[i] = frand(0.0, lifespan);
   }
   glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
-
-  return numSparks;
 }
 
 // prepare the compute shader and storage buffers
 // Adapted from Example 19
-int InitSparks(int numSparks, float fireflyColors[]) {
-  //  Get max workgroup size and count
-  glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 0, &ng);
-  glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 0, &nw);
-  if (ng > 8192) ng = 8192;
-  maxParticles = nw * ng;
-
+int InitSparks(int sparksPerFirefly, int numFireflies, float fireflyColors[]) {
+  numSparks = sparksPerFirefly * numFireflies;
   if (numSparks > maxParticles) {
-      numSparks = maxParticles;
+    numSparks = maxParticles;
   }
 
   //  Initialize position buffer
@@ -329,35 +396,19 @@ int InitSparks(int numSparks, float fireflyColors[]) {
   glBufferData(GL_SHADER_STORAGE_BUFFER, numSparks * sizeof(float), NULL, GL_STATIC_DRAW);
   glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
-  //  Set buffer base
+  // provide random values to the buffers and return the number of particles the compute shader will handle
+  ResetSparks(numSparks, fireflyColors);
+  return numSparks;
+}
+
+void ComputeSparkLocations() {
+  // Set buffer base
   glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, posbuf);
   glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, velbuf);
   glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, lifetimebuf);
+  glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 7, fireflyPosBuf);
 
-  // provide random values to the buffers and return the number of particles the compute shader will handle
-  return ResetSparks(numSparks, fireflyColors);
-}
-
-
-// draw sparks around fireflies
-void DrawFireflies(float fireflyPositions[], int numSparks, int numFireflies) {
-  mat4copy(modelView1, modelViewMat); // replacement for glPushMatrix()
-  mat4copy(modelViewMat, fireflyModelViewMat); // use the same modelViewMatrix as when we created the fireflies
-  unsigned int currentShader = simpleShader;
-  glUseProgram(currentShader);
-  // first, draw the fireflies
-  for (int i = 0; i < numFireflies; ++i) {
-    mat4copy(modelView2, modelViewMat); // replacement for glPushMatrix()
-    mat4translate(modelViewMat, fireflyPositions[4 * i + 0], fireflyPositions[4 * i + 1], fireflyPositions[4 * i + 2]);
-    mat4scale(modelViewMat, 0.05, 0.05, 0.05);
-    PassMatricesToShader(currentShader, viewMat, modelViewMat, projectionMat);
-    SimpleIcosahedron(currentShader); // represents a point light
-    mat4copy(modelViewMat, modelView2); // replacement for glPopMatrix()
-  }
-  ErrCheck("fireflies draw");  
-  
-      
-  currentShader = computeShader;
+  unsigned int currentShader = computeShader;
   //  Launch compute shader
   glUseProgram(currentShader);
   unsigned int id = glGetUniformLocation(currentShader, "lifespan");
@@ -365,15 +416,41 @@ void DrawFireflies(float fireflyPositions[], int numSparks, int numFireflies) {
   id = glGetUniformLocation(currentShader, "deltaTime");
   glUniform1f(id, dt);
   id = glGetUniformLocation(currentShader, "t");
-  glUniform1f(id, (float) currentTime); // texture unit 1 (noise)
+  glUniform1f(id, (float)currentTime);
+  id = glGetUniformLocation(currentShader, "sparksPerFirefly");
+  glUniform1ui(id, sparksPerFirefly);
   id = glGetUniformLocation(currentShader, "noiseTexture");
   glUniform1i(id, 1); // texture unit 1 (noise)
-  // glDispatchComputeGroupSizeARB(n/nw,1,1,nw,1,1);
-  glDispatchCompute(maxParticles / nw, 1, 1); // compensate for inability to use extension on my computer
+  glDispatchCompute(ceil(1.0 * numSparks / sparksPerWorkGroup), 1, 1); // compensate for inability to use extension on my computer
 
   //  Wait for compute shader
   glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-  ErrCheck("spark compute shader");
+  ErrCheck("calculate spark positions (compute shader)");
+}
+
+
+// draw sparks around fireflies
+void DrawFirefliesAndSparks(float fireflyPositions[], int numSparks, int numFireflies) {
+  glBindBuffer(GL_SHADER_STORAGE_BUFFER, fireflyPosBuf);
+  vec4* fireflyPos = (vec4*)glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, numFireflies * sizeof(vec4), GL_MAP_READ_BIT);
+  // first, draw the fireflies
+  mat4copy(modelView1, modelViewMat); // replacement for glPushMatrix()
+  mat4copy(modelViewMat, fireflyModelViewMat); // use the same modelViewMatrix as when we created the fireflies
+  unsigned int currentShader = simpleShader;
+  glUseProgram(currentShader);
+  for (int i = 0; i < numFireflies; ++i) {
+    mat4copy(modelView2, modelViewMat); // replacement for glPushMatrix()
+    // mat4translate(modelViewMat, fireflyPositions[4 * i + 0], fireflyPositions[4 * i + 1], fireflyPositions[4 * i + 2]);
+    mat4translate(modelViewMat, fireflyPos[i].x, fireflyPos[i].y, fireflyPos[i].z);
+    mat4scale(modelViewMat, 0.05, 0.05, 0.05);
+    PassMatricesToShader(currentShader, viewMat, modelViewMat, projectionMat);
+    SimpleIcosahedron(currentShader); // represents a point light
+    mat4copy(modelViewMat, modelView2); // replacement for glPopMatrix()
+  }
+  glUnmapBuffer(GL_SHADER_STORAGE_BUFFER); // free up the memory mapping to the firefly locations
+  ErrCheck("fireflies draw");  
+  
+  ComputeSparkLocations();
 
   // PREPARE TO DRAW FIREFLY SPARKS using particle shader -- transparent stuff is drawn last
   // Example 16 is used as reference, and some code is borrowed.
@@ -408,17 +485,17 @@ void DrawFireflies(float fireflyPositions[], int numSparks, int numFireflies) {
   id = glGetAttribLocation(currentShader, "Color");
   glVertexAttribPointer(id, 4, GL_FLOAT, 0, 16, (void*)0);
   glEnableVertexAttribArray(id);
-  ErrCheck("set up to draw firefly particles");
+  ErrCheck("set up to draw spark particles");
 
   // draw the sparks surrounding the fireflies
   PassMatricesToShader(currentShader, viewMat, modelViewMat, projectionMat);
-  int numSparksPerFirefly = numSparks / numFireflies;
   for (int i = 0; i < numFireflies; i++) {
     // set the location of the firefly who is the source of this spark
     mat4copy(modelView2, modelViewMat); // replacement for glPushMatrix()
-    mat4translate(modelViewMat, fireflyPositions[4 * i + 0], fireflyPositions[4 * i + 1], fireflyPositions[4 * i + 2]);
-    PassMatricesToShader(currentShader, viewMat, modelViewMat, projectionMat);
-    glDrawArrays(GL_POINTS, i * numSparksPerFirefly, numSparksPerFirefly);
+    // mat4translate(modelViewMat, fireflyPositions[4 * i + 0], fireflyPositions[4 * i + 1], fireflyPositions[4 * i + 2]);
+    // mat4translate(modelViewMat, fireflyPos[i].x, fireflyPos[i].y, fireflyPos[i].z);
+    // PassMatricesToShader(currentShader, viewMat, modelViewMat, projectionMat);
+    glDrawArrays(GL_POINTS, i * sparksPerFirefly, sparksPerFirefly);
     mat4copy(modelViewMat, modelView2); // replacement for glPopMatrix()
     ErrCheck("draw firefly sparks loop");
   }
@@ -432,8 +509,8 @@ void DrawFireflies(float fireflyPositions[], int numSparks, int numFireflies) {
   id = glGetAttribLocation(currentShader, "Color");
   glDisableVertexAttribArray(id);
   glBindTexture(GL_TEXTURE_2D, blankTexture);
-  ErrCheck("firefly sparks draw");
   mat4copy(modelViewMat, modelView1); // replacement for glPopMatrix()
+  ErrCheck("firefly sparks draw");
 }
 
 
@@ -446,6 +523,7 @@ void Exit() {
 void ResetView() {
     ph = 30;
     th = 0;
+    ResetFireflies(firefliesPerSwarm, numFireflySwarms, numFireflies);
     ResetSparks(numSparks, fireflyColors);
 }
 
@@ -511,12 +589,8 @@ void display(GLFWwindow* window)
   id = glGetUniformLocation(fireflyShader, "noiseTexture");
   glUniform1i(id, 1); // texture unit 1 (noise)
 
-  // draw the base plate
-  PassMatricesToShader(fireflyShader, viewMat, modelViewMat, projectionMat);
-  ErrCheck("before base plate");
-  DrawBasePlate(fireflyShader, grassTexture);
-
   
+  /*
   // set up the fireflies
   // hold the positions of four fireflies
   float fireflyPositions[16] = 
@@ -536,6 +610,22 @@ void display(GLFWwindow* window)
       fireflyPositions[4 * i + 1] += 0.05 * Cos(10*lTh) * Sin(20*lTh) + 0.2 * Cos(phase*lTh);
       fireflyPositions[4 * i + 2] += 0.2*(0.5-Sin(phase*lTh));
   }
+  */
+
+  // NEW WAY TO CALCULATE FIREFLY POSITIONS (using Boids)
+  ComputeFireflyLocations();
+
+  // unfortunately, the only way to pass the firefly locations as a uniform is to copy shader data to an array on the CPU, since glMapBufferRange data may not be used in OpenGL commands.
+  float fireflyPositions[maxFireflies*4];
+  glBindBuffer(GL_SHADER_STORAGE_BUFFER, fireflyPosBuf);
+  vec4* fireflyPos = (vec4*)glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, numFireflies * sizeof(vec4), GL_MAP_READ_BIT);
+  for (int i = 0; i < numFireflies; ++i) {
+      fireflyPositions[4 * i + 0] = fireflyPos[i].x;
+      fireflyPositions[4 * i + 1] = fireflyPos[i].y;
+      fireflyPositions[4 * i + 2] = fireflyPos[i].z;
+      fireflyPositions[4 * i + 3] = 1.0;
+  }
+  glUnmapBuffer(GL_SHADER_STORAGE_BUFFER); // free up the memory mapping to the firefly locations
 
   // use the firefly shader and draw grass lit by fireflies
   glUseProgram(fireflyShader);
@@ -545,11 +635,18 @@ void display(GLFWwindow* window)
   id = glGetUniformLocation(fireflyShader, "fireflyModelView");
   glUniformMatrix4fv(id, 1, 0, fireflyModelViewMat);
   id = glGetUniformLocation(fireflyShader, "fireflies");
-  glUniform4fv(id, 4, fireflyPositions);
+  glUniform4fv(id, numFireflies, fireflyPositions);
+  id = glGetUniformLocation(fireflyShader, "numFireflies");
+  glUniform1i(id, numFireflies);
   // lTh is a convenient variable that changes with time. I can use it to oscillate through a portion of the 3D noise map in order to make the fireflies quake.
   id = glGetUniformLocation(fireflyShader, "t");
   glUniform1f(id, (float) lTh);
   ErrCheck("fireflies lighting");
+
+  // draw the base plate
+  PassMatricesToShader(fireflyShader, viewMat, modelViewMat, projectionMat);
+  ErrCheck("before base plate");
+  DrawBasePlate(fireflyShader, grassTexture);
   
 
   // make a lawn of 6 by 10 blades of grass per patch. Without scaling, a patch takes up a [-1, 1] area.
@@ -621,7 +718,7 @@ void display(GLFWwindow* window)
   glBindVertexArray(0);
 
   // Draw firefly sparks
-  DrawFireflies(fireflyPositions, numSparks, numFireflies);
+  DrawFirefliesAndSparks(fireflyPositions, numSparks, numFireflies);
 
   //  Revert to fixed pipeline
   glUseProgram(0);
@@ -638,7 +735,6 @@ void display(GLFWwindow* window)
   SetColor(1, 1, 1);
   glWindowPos2i(5, 5);
   int fps = FramesPerSecond();
-  // Print("Angle=%d,%d  Dim=%.1f Projection=%s Mode=%s Frames Per Second=%d", th, ph, dim, fov > 0 ? "Perpective" : "Orthogonal", text[mode], fps);
   Print("Angle=%d,%d  Dim=%.1f Projection=%s Frames Per Second=%d", th, ph, dim, fov > 0 ? "Perpective" : "Orthogonal", fps);
 #endif
 
@@ -743,7 +839,7 @@ int CreateShaderProgCompute(char* file)
 int main(int argc,char* argv[])
 {
   //  Initialize GLFW
-  GLFWwindow* window = InitWindow("John Salame HW 9 - Advanced Shaders (Compute Shader)",0,600,600,&reshape,&key);
+  GLFWwindow* window = InitWindow("John Salame Final Project",1,600,600,&reshape,&key);
 
   //  Load shader
   simpleShader = CreateShaderProg("simple.vert", "simple.frag");
@@ -751,6 +847,7 @@ int main(int argc,char* argv[])
   textureShader = CreateShaderProg("texture.vert", "texture.frag");
   particleShader = CreateShaderProg("particle.vert", "particle.frag");
   computeShader = CreateShaderProgCompute("spark.cs");
+  boidsComputeShader = CreateShaderProgCompute("boids.cs");
   // shader[0] = CreateShaderProg("texture.vert", "blur.frag"); // filter
   // shader[1] = CreateShaderProg("texture.vert", "prewitt.frag"); // filter
   //  Load textures
@@ -761,6 +858,13 @@ int main(int argc,char* argv[])
   blankTexture = LoadTexBMP("blank.bmp");
   noiseTexture = CreateNoise3D(GL_TEXTURE1); // put noise in texture unit 1
 
+  // Prepare for compute shader
+  //  Get max workgroup size and count
+  glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 0, &ng);
+  glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 0, &nw);
+  if (ng > 8192) ng = 8192;
+  maxParticles = nw * ng;
+  printf("%d maximum work groups and %d maximum work group size.\n", ng, nw);
 
   // make the fireflies slightly yellow and transparent
   for (int i = 0; i < 4; ++i) {
@@ -769,9 +873,12 @@ int main(int argc,char* argv[])
       fireflyColors[4 * i + 2] = 0.4;
       fireflyColors[4 * i + 3] = 0.6; // slightly transparent
   }
+  // Initialize fireflies
+  numFireflies = InitFireflies(firefliesPerSwarm, numFireflySwarms);
+  printf("%d fireflies (%d per initial swarm, %d initial swarms\n", numFireflies, firefliesPerSwarm, numFireflySwarms);
   // Initialize things related to firefly sparks (for example, the compute shader and shader storage buffers)
-  int sparksPerFirefly = 10;
-  numSparks = InitSparks(numFireflies * sparksPerFirefly, fireflyColors);
+  numSparks = InitSparks(sparksPerFirefly, numFireflies, fireflyColors);
+  printf("%d sparks (%d per firefly)\n", numSparks, sparksPerFirefly);
 
   //  Event loop
   ErrCheck("init");
